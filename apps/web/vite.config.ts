@@ -94,6 +94,12 @@ function isDeferredRendererPreload(dep: string): boolean {
 
 export default defineConfig({
   root: __dirname,
+  // Emit relative paths in index.html so the same bundle works at the
+  // domain root and under a reverse-proxy subpath (e.g. /zennotes/).
+  // Runtime API + WebSocket calls derive the prefix from
+  // window.__ZN_BASE_PATH__, which the Go server injects into the SPA
+  // shell when ZENNOTES_BASE_PATH is set.
+  base: './',
   resolve: {
     alias: [
       { find: '@renderer', replacement: resolve(__dirname, '../../packages/app-core/src') },

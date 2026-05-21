@@ -78,7 +78,26 @@ const WEB_APP_INFO: ZenAppInfo = {
   runtime: 'web'
 }
 
-const API_BASE = '/api'
+// Base path under which the server is mounted (e.g. "/zennotes" when
+// running behind a reverse proxy at example.com/zennotes/). The Go
+// server injects a `<meta name="zn-base-path" content="...">` tag into
+// the HTML shell when a non-empty `ZENNOTES_BASE_PATH` is configured;
+// root deployments leave the tag out.
+function resolveBasePath(): string {
+  const meta =
+    typeof document !== 'undefined'
+      ? document.querySelector('meta[name="zn-base-path"]')
+      : null
+  const raw = meta?.getAttribute('content') ?? ''
+  let trimmed = raw.trim()
+  if (!trimmed || trimmed === '/') return ''
+  if (!trimmed.startsWith('/')) trimmed = '/' + trimmed
+  while (trimmed.endsWith('/')) trimmed = trimmed.slice(0, -1)
+  return trimmed
+}
+
+const BASE_PATH = resolveBasePath()
+const API_BASE = `${BASE_PATH}/api`
 
 type JsonBody = Record<string, unknown> | unknown[]
 type JsonRequestInit = Omit<RequestInit, 'body'> & { body?: JsonBody }

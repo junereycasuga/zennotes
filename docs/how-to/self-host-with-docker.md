@@ -186,6 +186,43 @@ or via the orchestrator of your choice.
   10 MiB and 50 MiB.
 - `ZENNOTES_VAULT_FILE_MODE` / `ZENNOTES_VAULT_DIR_MODE` — octal mode
   for new files / directories. Defaults `0600` and `0700`.
+- `ZENNOTES_BASE_PATH` — mount the API and static bundle under a
+  subpath instead of the domain root. Use this when deploying behind a
+  reverse proxy that routes by path (e.g. `example.com/zennotes/`).
+  See [Reverse-proxy with a path prefix](#reverse-proxy-with-a-path-prefix).
+
+## Reverse-proxy with a path prefix
+
+If you want to host ZenNotes alongside other apps under a single
+domain, set `ZENNOTES_BASE_PATH=/zennotes` (any leading-slash path
+works). The server then expects every request to start with that
+prefix; the bundled web client reads the prefix from a `<meta>` tag
+the server injects into the SPA shell, so API + WebSocket calls
+target `/zennotes/api/...` and `/zennotes/api/watch`.
+
+Example Nginx fragment that forwards `/zennotes/` to the container:
+
+```nginx
+location /zennotes/ {
+    proxy_pass         http://127.0.0.1:7878/zennotes/;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+    proxy_set_header   Upgrade           $http_upgrade;
+    proxy_set_header   Connection        "upgrade";
+}
+```
+
+Notes:
+
+- Keep the trailing slash on both sides of `proxy_pass` so the prefix
+  is preserved, not stripped.
+- The path is always rooted (must start with `/`); a trailing slash
+  is ignored. `ZENNOTES_BASE_PATH=zennotes/` is treated the same as
+  `/zennotes`.
+- An empty `ZENNOTES_BASE_PATH` (or `/`) means "serve at root" — the
+  default behaviour for plain Docker installs.
 
 For a deeper walkthrough of the security choices and a full env-var
 list, see:

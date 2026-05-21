@@ -3,22 +3,26 @@
 // Strategy:
 //   - App shell (HTML / JS / CSS bundles): cache-first after first load
 //     so the PWA opens instantly and works offline for reads.
-//   - API requests (/api/*): always hit the network; those responses
-//     are not cached here (the IndexedDB layer inside the app can do
-//     smarter per-note caching later).
+//   - API requests (<scope>/api/*): always hit the network; those
+//     responses are not cached here (the IndexedDB layer inside the app
+//     can do smarter per-note caching later).
 //
-// This file is deliberately small — Workbox or similar can replace it
-// later without changing the UI.
+// The SW derives the deployment prefix from its own registration scope,
+// so the same file works both at the root ("/") and under a reverse
+// proxy subpath ("/zennotes/"). This file is deliberately small —
+// Workbox or similar can replace it later without changing the UI.
 
-const CACHE_NAME = 'zennotes-shell-v2'
+const CACHE_NAME = 'zennotes-shell-v3'
+const SCOPE_PATH = new URL(self.registration.scope).pathname
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/favicon-32.png',
-  '/icon-192.png',
-  '/icon-512.png'
+  SCOPE_PATH,
+  SCOPE_PATH + 'index.html',
+  SCOPE_PATH + 'manifest.webmanifest',
+  SCOPE_PATH + 'favicon-32.png',
+  SCOPE_PATH + 'icon-192.png',
+  SCOPE_PATH + 'icon-512.png'
 ]
+const API_PREFIX = SCOPE_PATH + 'api/'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -46,7 +50,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url)
 
   // Never cache API or websocket traffic.
-  if (url.pathname.startsWith('/api/')) return
+  if (url.pathname.startsWith(API_PREFIX)) return
 
   // Same-origin assets: cache-first with background refresh.
   if (url.origin === self.location.origin) {
