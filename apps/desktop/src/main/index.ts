@@ -331,7 +331,7 @@ type ExternalOpenUrlResult = 'none' | 'note' | 'quick-capture'
 
 function handleExternalOpenUrl(rawUrl: string): ExternalOpenUrlResult {
   if (parseQuickCaptureDeepLink(rawUrl)) {
-    toggleQuickCaptureWindow()
+    void toggleQuickCaptureWindow()
     return 'quick-capture'
   }
   const request = parseOpenNoteDeepLink(rawUrl)
@@ -2631,7 +2631,7 @@ function registerIpc(): void {
   })
 
   handle(IPC.WINDOW_TOGGLE_QUICK_CAPTURE, async () => {
-    toggleQuickCaptureWindow()
+    await toggleQuickCaptureWindow()
   })
 
   handle(IPC.APP_GET_QUICK_CAPTURE_HOTKEY, async () => {
@@ -2797,7 +2797,7 @@ let registeredQuickCaptureHotkey: string | null = null
  *  auto-hide on blur. Mirrors PersistedConfig.quickCapturePinned. */
 let quickCapturePinned = false
 
-function ensureQuickCaptureWindow(): BrowserWindow {
+async function ensureQuickCaptureWindow(): Promise<BrowserWindow> {
   if (quickCaptureWindow && !quickCaptureWindow.isDestroyed()) return quickCaptureWindow
   const mac = isMac()
   const sourceWindow = BrowserWindow.getFocusedWindow() ?? mainWindow
@@ -2860,6 +2860,10 @@ function ensureQuickCaptureWindow(): BrowserWindow {
   applyZoomFactor(win, currentZoomFactor)
   if (sourceWindow && !sourceWindow.isDestroyed()) {
     inheritWindowWorkspaceSession(sourceWindow, win)
+  } else {
+    await ipcWindowContext.run(win, async () => {
+      await loadCurrentVaultFromConfig()
+    })
   }
 
   const params = '?quickCapture=1'
@@ -2884,8 +2888,8 @@ function applyQuickCapturePinned(): void {
   win.setAlwaysOnTop(true, quickCapturePinned ? 'screen-saver' : 'floating')
 }
 
-function showQuickCaptureWindow(): void {
-  const win = ensureQuickCaptureWindow()
+async function showQuickCaptureWindow(): Promise<void> {
+  const win = await ensureQuickCaptureWindow()
   const sourceWindow = BrowserWindow.getFocusedWindow() ?? mainWindow
   if (sourceWindow && sourceWindow.id !== win.id && !sourceWindow.isDestroyed()) {
     inheritWindowWorkspaceSession(sourceWindow, win)
@@ -2894,13 +2898,13 @@ function showQuickCaptureWindow(): void {
   win.focus()
 }
 
-function toggleQuickCaptureWindow(): void {
+async function toggleQuickCaptureWindow(): Promise<void> {
   const win = quickCaptureWindow
   if (win && !win.isDestroyed() && win.isVisible() && win.isFocused()) {
     win.hide()
     return
   }
-  showQuickCaptureWindow()
+  await showQuickCaptureWindow()
 }
 
 function unregisterQuickCaptureHotkey(): void {
@@ -2920,7 +2924,7 @@ function registerQuickCaptureHotkey(hotkey: string): { ok: boolean; error?: stri
   try {
     const ok = globalShortcut.register(trimmed, () => {
       console.info(`[zen:quick-capture] hotkey pressed: ${trimmed}`)
-      toggleQuickCaptureWindow()
+      void toggleQuickCaptureWindow()
     })
     if (!ok) {
       return { ok: false, error: `Failed to register quick capture hotkey: ${trimmed}` }
@@ -3265,14 +3269,14 @@ app.whenReady().then(async () => {
   registerIpc()
   initAppUpdater()
   registerAppDeepLinkProtocol()
-  handleStartupDeepLinks(process.argv)
+  const startupDeepLinkResult = handleStartupDeepLinks(process.argv)
   handleStartupMarkdownArgs(process.argv, true)
 
   // Honor a file ZenNotes was launched to open before falling back to a
   // default-vault window, so double-clicking a .md doesn't also pop an
   // unrelated window.
   const openedFromFile = await flushPendingFileOpens()
-  if (!openedFromFile) {
+  if (!openedFromFile && startupDeepLinkResult !== 'quick-capture') {
     await ensureMainWindow()
   }
   void flushPendingFloatingNoteRequests()
@@ -3330,7 +3334,12 @@ app.on('open-file', (event, filePath) => {
 app.on('second-instance', (_event, argv) => {
   const deepLinkResult = handleStartupDeepLinks(argv)
   handleStartupMarkdownArgs(argv, false)
-  if (deepLinkResult !== 'quick-capture' && mainWindow && !mainWindow.isDestroyed()) focusWindow(mainWindow)
+  if (deepLinkResult === 'quick-capture') return
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    focusWindow(mainWindow)
+    return
+  }
+  void ensureMainWindow()
 })
 
 app.on('window-all-closed', () => {
