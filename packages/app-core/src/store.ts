@@ -976,6 +976,32 @@ function writeRolloverMarker(root: string, iso: string): void {
   }
 }
 
+// Per-vault "the user dismissed the inbox-mode/vault-root notice" marker (#216).
+// Some vaults intentionally keep extra material at the root (e.g. AI tooling),
+// so once dismissed the banner stays hidden for that vault. Keyed by root.
+function rootBannerDismissKey(root: string): string {
+  return `zen.sidebar.rootBannerDismissed.${root || 'default'}`
+}
+function readRootBannerDismissed(root: string): boolean {
+  try {
+    return (
+      typeof localStorage !== 'undefined' &&
+      localStorage.getItem(rootBannerDismissKey(root)) === '1'
+    )
+  } catch {
+    return false
+  }
+}
+function writeRootBannerDismissed(root: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(rootBannerDismissKey(root), '1')
+    }
+  } catch {
+    // localStorage may be unavailable; the banner just reappears next session.
+  }
+}
+
 function applyTaskMutationsToTask(task: VaultTask, mutations: TaskMutation[]): VaultTask {
   let next = task
   for (const m of mutations) {
@@ -1522,6 +1548,8 @@ interface Store {
   vaultSettings: VaultSettings
   /** Vault is in `inbox` mode but its root holds notes only `root` mode shows. */
   rootContentHiddenByInboxMode: boolean
+  /** The user dismissed the vault-root notice for the current vault (#216). */
+  rootContentBannerDismissed: boolean
   notes: NoteMeta[]
   folders: FolderEntry[]
   assetFiles: AssetMeta[]
@@ -1824,6 +1852,8 @@ interface Store {
   applyChange: (ev: VaultChangeEvent) => Promise<void>
   refreshNotes: () => Promise<void>
   refreshRootContentHidden: () => Promise<void>
+  /** Dismiss the vault-root notice for the current vault, persisted (#216). */
+  dismissRootContentBanner: () => void
   refreshAssets: () => Promise<void>
   deleteAsset: (relPath: string) => Promise<void>
   undoLastAssetAction: () => Promise<boolean>
@@ -2911,6 +2941,7 @@ export const useStore = create<Store>((set, get) => {
   workspaceSetupError: null,
   vaultSettings: DEFAULT_VAULT_SETTINGS,
   rootContentHiddenByInboxMode: false,
+  rootContentBannerDismissed: false,
   notes: [],
   folders: [],
   assetFiles: [],
@@ -3077,12 +3108,21 @@ export const useStore = create<Store>((set, get) => {
   refreshRootContentHidden: async () => {
     try {
       const hidden = await window.zen.rootContentHiddenByInboxMode()
-      if (get().rootContentHiddenByInboxMode !== hidden) {
-        set({ rootContentHiddenByInboxMode: hidden })
+      const dismissed = readRootBannerDismissed(get().vault?.root ?? '')
+      const cur = get()
+      if (
+        cur.rootContentHiddenByInboxMode !== hidden ||
+        cur.rootContentBannerDismissed !== dismissed
+      ) {
+        set({ rootContentHiddenByInboxMode: hidden, rootContentBannerDismissed: dismissed })
       }
     } catch {
       // Non-fatal: the banner is advisory; keep the previous value on error.
     }
+  },
+  dismissRootContentBanner: () => {
+    writeRootBannerDismissed(get().vault?.root ?? '')
+    set({ rootContentBannerDismissed: true })
   },
   setNotes: (notes) => set({ notes }),
   setView: (view) => {

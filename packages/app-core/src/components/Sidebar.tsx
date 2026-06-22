@@ -387,6 +387,8 @@ export function Sidebar(): JSX.Element {
   const activeDirty = useStore((s) => s.activeDirty);
   const vaultSettings = useStore((s) => s.vaultSettings);
   const rootContentHiddenByInboxMode = useStore((s) => s.rootContentHiddenByInboxMode);
+  const rootContentBannerDismissed = useStore((s) => s.rootContentBannerDismissed);
+  const dismissRootContentBanner = useStore((s) => s.dismissRootContentBanner);
   const view = useStore((s) => s.view);
   const assetFiles = useStore((s) => s.assetFiles);
   const setView = useStore((s) => s.setView);
@@ -2849,16 +2851,27 @@ export function Sidebar(): JSX.Element {
         </div>
       </div>
 
-      {rootContentHiddenByInboxMode && (
-        <div className="mx-3 mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
-          <p className="text-xs font-semibold text-ink-900">Notes at your vault root aren’t shown</p>
-          <p className="mt-1 text-xs leading-5 text-ink-600">
-            This vault opened in <span className="font-medium text-ink-800">Inbox</span> mode, so
-            top-level files and folders are hidden. Switch to{" "}
-            <span className="font-medium text-ink-800">Vault root</span> to see them — the
-            Obsidian-style flat layout.
+      {rootContentHiddenByInboxMode && !rootContentBannerDismissed && (
+        <div className="relative mx-3 mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+          <button
+            type="button"
+            onClick={() => dismissRootContentBanner()}
+            title="Dismiss for this vault"
+            aria-label="Dismiss"
+            className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded text-ink-500 hover:bg-current/10 hover:text-ink-800"
+          >
+            <CloseIcon width={12} height={12} />
+          </button>
+          <p className="pr-5 text-xs font-semibold text-ink-900">
+            Notes at your vault root aren’t shown
           </p>
-          <div className="mt-2">
+          <p className="mt-1 text-xs leading-5 text-ink-600">
+            This vault is in <span className="font-medium text-ink-800">Inbox</span> mode, so
+            top-level files and folders are hidden — intentional for many setups. Switch to{" "}
+            <span className="font-medium text-ink-800">Vault root</span> to show them, or dismiss
+            this notice.
+          </p>
+          <div className="mt-2 flex items-center gap-2">
             <Button
               variant="primary"
               size="sm"
@@ -2867,6 +2880,9 @@ export function Sidebar(): JSX.Element {
               }
             >
               Switch to Vault root
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => dismissRootContentBanner()}>
+              Dismiss
             </Button>
           </div>
         </div>
