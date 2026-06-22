@@ -35,6 +35,7 @@ import {
 } from '@shared/databases'
 import { parseFrontmatter } from '@shared/template-files'
 import { recordTitle, composePageBody } from './lib/database-cells'
+import { applyManualMove, manualOrderCompare, parentDirOf } from './lib/manual-order'
 import { TAGS_TAB_PATH, isTagsTabPath } from '@shared/tags'
 import { HELP_TAB_PATH, isHelpTabPath } from '@shared/help'
 import { ARCHIVE_TAB_PATH, isArchiveTabPath } from '@shared/archive'
@@ -141,6 +142,7 @@ import {
 
 export type NoteSortOrder =
   | 'none'
+  | 'manual'
   | 'updated-desc'
   | 'updated-asc'
   | 'created-desc'
@@ -167,6 +169,7 @@ const VALID_FAMILIES: ThemeFamily[] = [
 const VALID_MODES: ThemeMode[] = ['light', 'dark', 'auto']
 const VALID_SORTS: NoteSortOrder[] = [
   'none',
+  'manual',
   'updated-desc',
   'updated-asc',
   'created-desc',
@@ -1002,6 +1005,41 @@ function writeRootBannerDismissed(root: string): void {
   }
 }
 
+// Per-vault manual note order (#224): `parentDir -> ordered note paths`. Stored
+// in localStorage keyed by vault root, like the rollover marker. Not a vault
+// sidecar yet, so it's per-machine — a portable `.zennotes` file is a follow-up.
+type ManualNoteOrder = Record<string, string[]>
+function manualOrderKey(root: string): string {
+  return `zen.notes.manualOrder.${root || 'default'}`
+}
+function readManualOrder(root: string): ManualNoteOrder {
+  try {
+    const raw =
+      typeof localStorage !== 'undefined' ? localStorage.getItem(manualOrderKey(root)) : null
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object') return {}
+    const out: ManualNoteOrder = {}
+    for (const [dir, list] of Object.entries(parsed as Record<string, unknown>)) {
+      if (Array.isArray(list)) out[dir] = list.filter((p): p is string => typeof p === 'string')
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+function writeManualOrder(root: string, order: ManualNoteOrder): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(manualOrderKey(root), JSON.stringify(order))
+    }
+  } catch {
+    // localStorage may be unavailable; the manual order is best-effort.
+  }
+}
+// Which vault root the in-memory manual order was loaded for; reloaded on switch.
+let manualOrderLoadedForRoot: string | null = null
+
 function applyTaskMutationsToTask(task: VaultTask, mutations: TaskMutation[]): VaultTask {
   let next = task
   for (const m of mutations) {
@@ -1624,6 +1662,9 @@ interface Store {
   unifiedSidebar: boolean
   darkSidebar: boolean
   showSidebarChevrons: boolean
+  /** Manual (drag-to-reorder) note order for `noteSortOrder: 'manual'`, keyed
+   *  by parent directory → ordered note paths. Persisted per vault (#224). */
+  manualNoteOrder: ManualNoteOrder
   /** Sidebar tree collapsed-folder keys. Kept in the store so the
    *  state survives Sidebar unmount/mount (e.g. toggling the sidebar). */
   collapsedFolders: string[]
@@ -1928,6 +1969,12 @@ interface Store {
   setSidebarWidth: (px: number) => void
   setNoteListWidth: (px: number) => void
   setNoteSortOrder: (order: NoteSortOrder) => void
+  /** Move a note before/after a sibling in its folder's manual order (#224). */
+  reorderNoteManually: (
+    draggedPath: string,
+    targetPath: string,
+    position: 'before' | 'after'
+  ) => void
   setGroupByKind: (on: boolean) => void
   setAutoReveal: (on: boolean) => void
   setUnifiedSidebar: (on: boolean) => void
@@ -2942,6 +2989,7 @@ export const useStore = create<Store>((set, get) => {
   vaultSettings: DEFAULT_VAULT_SETTINGS,
   rootContentHiddenByInboxMode: false,
   rootContentBannerDismissed: false,
+  manualNoteOrder: {},
   notes: [],
   folders: [],
   assetFiles: [],
@@ -3860,6 +3908,12 @@ export const useStore = create<Store>((set, get) => {
 
   refreshNotes: async () => {
     try {
+      // Load this vault's manual note order once per vault (drives #224).
+      const orderRoot = get().vault?.root ?? ''
+      if (manualOrderLoadedForRoot !== orderRoot) {
+        manualOrderLoadedForRoot = orderRoot
+        set({ manualNoteOrder: readManualOrder(orderRoot) })
+      }
       const startedAt = performance.now()
       const [notes, folders, hasAssetsDirOnDisk] = await Promise.all([
         listNotesFromBridge(),
@@ -4761,6 +4815,24 @@ export const useStore = create<Store>((set, get) => {
   setNoteSortOrder: (order) => {
     set({ noteSortOrder: order })
     savePrefs(collectPrefs(get()))
+  },
+  reorderNoteManually: (draggedPath, targetPath, position) => {
+    const dir = parentDirOf(draggedPath)
+    if (draggedPath === targetPath || parentDirOf(targetPath) !== dir) return
+    const s = get()
+    const existing = s.manualNoteOrder[dir]
+    // Current sibling order (manual if set, else file order), then move.
+    const ordered = s.notes
+      .filter((n) => parentDirOf(n.path) === dir)
+      .slice()
+      .sort((a, b) =>
+        manualOrderCompare(existing, a.path, a.siblingOrder, b.path, b.siblingOrder)
+      )
+      .map((n) => n.path)
+    const next = applyManualMove(ordered, draggedPath, targetPath, position)
+    const nextMap = { ...s.manualNoteOrder, [dir]: next }
+    set({ manualNoteOrder: nextMap })
+    writeManualOrder(s.vault?.root ?? '', nextMap)
   },
   setGroupByKind: (on) => {
     set({ groupByKind: on })

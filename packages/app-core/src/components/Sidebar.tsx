@@ -64,11 +64,13 @@ import {
   parseFavoriteFolderKey,
 } from "../lib/vault-layout";
 import {
+  getCurrentDragPayload,
   hasZenItem,
   readDragPayload,
   setDragPayload,
   type DragPayload,
 } from "../lib/dnd";
+import { manualOrderCompare, parentDirOf } from "../lib/manual-order";
 import { resolveSystemFolderLabels } from "../lib/system-folder-labels";
 import { assetTabPath } from "../lib/asset-tabs";
 import {
@@ -437,6 +439,7 @@ export function Sidebar(): JSX.Element {
   const sidebarWidth = useStore((s) => s.sidebarWidth);
   const setSidebarWidth = useStore((s) => s.setSidebarWidth);
   const noteSortOrder = useStore((s) => s.noteSortOrder);
+  const manualNoteOrder = useStore((s) => s.manualNoteOrder);
   const setNoteSortOrder = useStore((s) => s.setNoteSortOrder);
   const groupByKind = useStore((s) => s.groupByKind);
   const setGroupByKind = useStore((s) => s.setGroupByKind);
@@ -1223,6 +1226,17 @@ export function Sidebar(): JSX.Element {
     switch (noteSortOrder) {
       case "none":
         return null;
+      case "manual":
+        // Notes follow the folder's custom order; unlisted notes keep file
+        // order. Siblings share a parent dir, so either path resolves it.
+        return (a: NoteMeta, b: NoteMeta) =>
+          manualOrderCompare(
+            manualNoteOrder[parentDirOf(a.path)],
+            a.path,
+            a.siblingOrder,
+            b.path,
+            b.siblingOrder,
+          );
       case "updated-asc":
         return (a: NoteMeta, b: NoteMeta) => a.updatedAt - b.updatedAt;
       case "created-desc":
@@ -1237,7 +1251,7 @@ export function Sidebar(): JSX.Element {
       default:
         return (a: NoteMeta, b: NoteMeta) => b.updatedAt - a.updatedAt;
     }
-  }, [noteSortOrder]);
+  }, [noteSortOrder, manualNoteOrder]);
 
   /** All folder keys currently present in the tree, for expand/collapse-all. */
   const allFolderKeys = useMemo(() => {
@@ -3378,6 +3392,7 @@ export function Sidebar(): JSX.Element {
             ...(
               [
                 ["none", "No sorting"],
+                ["manual", "Manual (drag to reorder)"],
                 ["updated-desc", "Modified (newest first)"],
                 ["updated-asc", "Modified (oldest first)"],
                 ["created-desc", "Created (newest first)"],
@@ -4322,6 +4337,51 @@ const NoteLeaf = memo(function NoteLeaf({
     },
     [dragPayloadForItem, note.path],
   );
+  // Manual (drag-to-reorder) ordering — only in Manual sort, within a folder.
+  const manualSort = useStore((s) => s.noteSortOrder === "manual");
+  const reorderNoteManually = useStore((s) => s.reorderNoteManually);
+  const [dropPos, setDropPos] = useState<"before" | "after" | null>(null);
+  const handleReorderDragOver = useCallback(
+    (event: React.DragEvent<HTMLButtonElement>) => {
+      if (!manualSort || !hasZenItem(event)) return;
+      const drag = getCurrentDragPayload();
+      // Same-folder note drops reorder here; everything else bubbles to the
+      // folder's move handler (so cross-folder moves still work).
+      if (
+        !drag ||
+        drag.kind !== "note" ||
+        drag.path === note.path ||
+        parentDirOf(drag.path) !== parentDirOf(note.path)
+      ) {
+        if (dropPos) setDropPos(null);
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "move";
+      const rect = event.currentTarget.getBoundingClientRect();
+      const pos = event.clientY - rect.top < rect.height / 2 ? "before" : "after";
+      if (pos !== dropPos) setDropPos(pos);
+    },
+    [manualSort, note.path, dropPos],
+  );
+  const handleReorderDragLeave = useCallback(() => {
+    setDropPos((p) => (p ? null : p));
+  }, []);
+  const handleReorderDrop = useCallback(
+    (event: React.DragEvent<HTMLButtonElement>) => {
+      if (!dropPos) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const drag = readDragPayload(event) ?? getCurrentDragPayload();
+      const pos = dropPos;
+      setDropPos(null);
+      if (drag?.kind === "note" && parentDirOf(drag.path) === parentDirOf(note.path)) {
+        reorderNoteManually(drag.path, note.path, pos);
+      }
+    },
+    [dropPos, note.path, reorderNoteManually],
+  );
   // Custom icon / color set via the note's right-click menu (keyed by path).
   // Read directly from the store so the row updates when they change — the
   // selector returns a primitive, so it only re-renders for this note.
@@ -4336,8 +4396,11 @@ const NoteLeaf = memo(function NoteLeaf({
       onContextMenu={handleContextMenu}
       draggable
       onDragStart={handleDragStart}
+      onDragOver={handleReorderDragOver}
+      onDragLeave={handleReorderDragLeave}
+      onDrop={handleReorderDrop}
       className={[
-        "group flex h-9 w-full items-center gap-1.5 rounded-lg px-1 text-left text-sm outline-none transition-colors focus:outline-none",
+        "group relative flex h-9 w-full items-center gap-1.5 rounded-lg px-1 text-left text-sm outline-none transition-colors focus:outline-none",
         active
           ? colorClass
             ? `bg-accent/20 ring-1 ring-inset ring-accent/60${vimHighlight ? " vim-cursor-on-active" : ""}`
@@ -4362,6 +4425,12 @@ const NoteLeaf = memo(function NoteLeaf({
           }
         : {})}
     >
+      {dropPos === "before" && (
+        <span className="pointer-events-none absolute inset-x-1 -top-px h-0.5 rounded-full bg-accent" />
+      )}
+      {dropPos === "after" && (
+        <span className="pointer-events-none absolute inset-x-1 -bottom-px h-0.5 rounded-full bg-accent" />
+      )}
       <SidebarGlyph
         active={strongActive}
         rowActive={active || selected}
@@ -5420,6 +5489,8 @@ function sortOrderLabel(order: NoteSortOrder): string {
   switch (order) {
     case "none":
       return "No sorting";
+    case "manual":
+      return "Manual";
     case "updated-desc":
       return "Modified (newest)";
     case "updated-asc":
