@@ -202,7 +202,7 @@ export const HELP_CORE_CONCEPTS: HelpCard[] = [
   {
     title: 'Tasks, tags, archive, and trash are vault-wide views',
     body:
-      'Tasks scans every note for checkboxes, Tags lets you browse notes matching any selected tag, Archive gives you a dedicated list of cold-storage notes, and Trash gives you a recovery surface for deleted notes without turning the left rail into a second browser.'
+      'Tasks scans every note for checkboxes, Tags lets you browse notes that carry all of the selected tags (toggle Match to Any for a union), Archive gives you a dedicated list of cold-storage notes, and Trash gives you a recovery surface for deleted notes without turning the left rail into a second browser.'
   },
   {
     title: 'The Tasks calendar schedules and reschedules',

@@ -402,6 +402,9 @@ interface Prefs {
 
 export type TasksViewMode = 'list' | 'calendar' | 'kanban'
 export type KanbanGroupBy = 'status' | 'priority' | 'folder'
+/** How the Tags view combines multiple selected tags: `all` = intersection
+ *  (AND, narrows), `any` = union (OR, widens). */
+export type TagMatchMode = 'all' | 'any'
 
 export type TaskMutation =
   | { kind: 'set-checked'; checked: boolean }
@@ -1677,9 +1680,12 @@ interface Store {
   databasesLoading: Record<string, boolean>
 
   /** Tags currently selected in the Tags view. The view shows every non-
-   *  trash note carrying *any* of these (union), so toggling more tags
-   *  widens the result set. Cleared when the Tags tab closes. */
+   *  trash note carrying *all* (or, in `any` mode, any) of these, depending on
+   *  `tagMatchMode`. Cleared when the Tags tab closes. */
   selectedTags: string[]
+  /** Whether multiple selected tags combine with AND (`all`, the default —
+   *  narrows) or OR (`any` — widens). */
+  tagMatchMode: TagMatchMode
 
   /** Vim navigation: which panel is keyboard-focused. */
   focusedPanel: Panel | null
@@ -1765,6 +1771,8 @@ interface Store {
   toggleTagSelection: (tag: string) => void
   /** Replace the Tags view selection wholesale (used by `:tag a b c`). */
   setSelectedTags: (tags: string[]) => void
+  /** Switch how multiple selected tags combine (AND vs OR). */
+  setTagMatchMode: (mode: TagMatchMode) => void
   /** Force a full vault rescan for tasks. */
   refreshTasks: () => Promise<void>
   /** Rescan a single note's tasks and splice the result into `vaultTasks`. */
@@ -3000,6 +3008,7 @@ export const useStore = create<Store>((set, get) => {
   databases: {},
   databasesLoading: {},
   selectedTags: [],
+  tagMatchMode: 'all',
   focusedPanel: null,
   sidebarCursorIndex: 0,
   noteListCursorIndex: 0,
@@ -3401,6 +3410,8 @@ export const useStore = create<Store>((set, get) => {
     }
     set({ selectedTags: clean })
   },
+
+  setTagMatchMode: (mode) => set({ tagMatchMode: mode }),
 
   refreshTasks: async () => {
     set({ tasksLoading: true })
