@@ -713,7 +713,8 @@ export const HELP_SETTINGS: HelpSettingsSection[] = [
       { label: 'Font size and line height', detail: 'Tune reading density in the editor and preview.' },
       { label: 'Reading width and editor width', detail: 'Cap long lines so wide windows stay readable.' },
       { label: 'Content alignment', detail: 'Center note content in its column or left-align it to the pane edge.' },
-      { label: 'Line numbers', detail: 'Switch between off, absolute, and relative gutter numbering.' }
+      { label: 'Line numbers', detail: 'Switch between off, absolute, and relative gutter numbering.' },
+      { label: 'Line number position', detail: 'Keep the gutter next to the centered text or pin it to the editor edge.' }
     ]
   },
   {

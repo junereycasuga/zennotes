@@ -358,6 +358,8 @@ export function SettingsModal(): JSX.Element {
   const setPreviewMaxWidth = useStore((s) => s.setPreviewMaxWidth)
   const lineNumberMode = useStore((s) => s.lineNumberMode)
   const setLineNumberMode = useStore((s) => s.setLineNumberMode)
+  const lineNumberPosition = useStore((s) => s.lineNumberPosition)
+  const setLineNumberPosition = useStore((s) => s.setLineNumberPosition)
   const interfaceFont = useStore((s) => s.interfaceFont)
   const setInterfaceFont = useStore((s) => s.setInterfaceFont)
   const textFont = useStore((s) => s.textFont)
@@ -1278,6 +1280,12 @@ export function SettingsModal(): JSX.Element {
           title: 'Line numbers',
           description: 'Show editor gutter numbers.',
           keywords: ['numbers', 'gutter', 'relative', 'absolute']
+        },
+        {
+          id: 'line-number-position',
+          title: 'Line number position',
+          description: 'Place the line-number gutter next to the text or at the editor edge.',
+          keywords: ['numbers', 'gutter', 'position', 'edge', 'text', 'align']
         }
       ],
       content: (
@@ -1383,6 +1391,19 @@ export function SettingsModal(): JSX.Element {
               ]}
               onChange={(next) => setLineNumberMode(next)}
             />
+            {lineNumberMode !== 'off' && (
+              <SegmentedRow
+                label="Line number position"
+                description="With centered content, keep the numbers next to the text column or pin them to the editor's left edge."
+                value={lineNumberPosition}
+                settingId="line-number-position"
+                options={[
+                  { value: 'text', label: 'Next to text' },
+                  { value: 'edge', label: 'Editor edge' }
+                ]}
+                onChange={(next) => setLineNumberPosition(next)}
+              />
+            )}
           </Section>
         </div>
       )

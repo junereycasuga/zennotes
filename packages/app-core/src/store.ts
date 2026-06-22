@@ -152,6 +152,11 @@ export type NoteSortOrder =
   | 'name-desc'
 
 export type LineNumberMode = 'off' | 'absolute' | 'relative'
+
+/** Where the line-number gutter sits when content is centered: glued to the
+ *  left of the text column ('text', default) or pinned to the editor's far-left
+ *  edge ('edge'). No visible effect when content is left-aligned. (#228) */
+export type LineNumberPosition = 'edge' | 'text'
 export type WhichKeyHintMode = 'timed' | 'sticky'
 export type CommandPaletteInitialMode = 'main' | 'vault'
 
@@ -179,6 +184,7 @@ const VALID_SORTS: NoteSortOrder[] = [
   'name-desc'
 ]
 const VALID_LINE_NUMBER_MODES: LineNumberMode[] = ['off', 'absolute', 'relative']
+const VALID_LINE_NUMBER_POSITIONS: LineNumberPosition[] = ['edge', 'text']
 const VALID_WHICH_KEY_HINT_MODES: WhichKeyHintMode[] = ['timed', 'sticky']
 const VALID_VAULT_TEXT_SEARCH_BACKENDS: VaultTextSearchBackendPreference[] = [
   'auto',
@@ -320,6 +326,7 @@ interface Prefs {
   editorLineHeight: number  // unitless multiplier
   previewMaxWidth: number   // px — max reading width for preview surfaces
   lineNumberMode: LineNumberMode
+  lineNumberPosition: LineNumberPosition
   /** Font used by the whole app chrome (sidebar, menus, title bar). */
   interfaceFont: string | null
   /** Font used inside the editor + preview content. */
@@ -466,6 +473,7 @@ const DEFAULT_PREFS: Prefs = {
   editorLineHeight: 1.7,
   previewMaxWidth: 920,
   lineNumberMode: 'off',
+  lineNumberPosition: 'text',
   // Leave all font slots on the built-in "Default" path. That lets the
   // shipped CSS fallbacks choose sensible system fonts on each machine
   // instead of forcing a specific family that may not exist.
@@ -589,6 +597,10 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
       p.lineNumberMode && VALID_LINE_NUMBER_MODES.includes(p.lineNumberMode)
         ? p.lineNumberMode
         : DEFAULT_PREFS.lineNumberMode,
+    lineNumberPosition:
+      p.lineNumberPosition && VALID_LINE_NUMBER_POSITIONS.includes(p.lineNumberPosition)
+        ? p.lineNumberPosition
+        : DEFAULT_PREFS.lineNumberPosition,
     interfaceFont:
       typeof p.interfaceFont === 'string' || p.interfaceFont === null
         ? (p.interfaceFont as string | null)
@@ -1224,6 +1236,7 @@ function collectPrefs(s: {
   editorLineHeight: number
   previewMaxWidth: number
   lineNumberMode: LineNumberMode
+  lineNumberPosition: LineNumberPosition
   interfaceFont: string | null
   textFont: string | null
   monoFont: string | null
@@ -1283,6 +1296,7 @@ function collectPrefs(s: {
     editorLineHeight: s.editorLineHeight,
     previewMaxWidth: s.previewMaxWidth,
     lineNumberMode: s.lineNumberMode,
+    lineNumberPosition: s.lineNumberPosition,
     interfaceFont: s.interfaceFont,
     textFont: s.textFont,
     monoFont: s.monoFont,
@@ -1651,6 +1665,7 @@ interface Store {
   editorLineHeight: number
   previewMaxWidth: number
   lineNumberMode: LineNumberMode
+  lineNumberPosition: LineNumberPosition
   interfaceFont: string | null
   textFont: string | null
   monoFont: string | null
@@ -1963,6 +1978,7 @@ interface Store {
   setEditorLineHeight: (mult: number) => void
   setPreviewMaxWidth: (px: number) => void
   setLineNumberMode: (mode: LineNumberMode) => void
+  setLineNumberPosition: (position: LineNumberPosition) => void
   setInterfaceFont: (family: string | null) => void
   setTextFont: (family: string | null) => void
   setMonoFont: (family: string | null) => void
@@ -3044,6 +3060,7 @@ export const useStore = create<Store>((set, get) => {
   editorLineHeight: loadPrefs().editorLineHeight,
   previewMaxWidth: loadPrefs().previewMaxWidth,
   lineNumberMode: loadPrefs().lineNumberMode,
+  lineNumberPosition: loadPrefs().lineNumberPosition,
   interfaceFont: loadPrefs().interfaceFont,
   textFont: loadPrefs().textFont,
   monoFont: loadPrefs().monoFont,
@@ -4778,6 +4795,10 @@ export const useStore = create<Store>((set, get) => {
   },
   setLineNumberMode: (mode) => {
     set({ lineNumberMode: mode })
+    savePrefs(collectPrefs(get()))
+  },
+  setLineNumberPosition: (position) => {
+    set({ lineNumberPosition: position })
     savePrefs(collectPrefs(get()))
   },
   setInterfaceFont: (family) => {

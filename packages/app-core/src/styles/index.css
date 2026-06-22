@@ -1701,6 +1701,34 @@ textarea,
   color: rgb(var(--z-fg-2) / 0.72);
   padding-left: 12px;
   padding-right: 6px;
+  /* Line-number gutter position (Settings → Editor → Line number position, #228).
+     With centered content the column is capped and centered (`margin: 0 auto`);
+     by default ("text") the gutter is given a left auto-margin so the whole
+     [gutter + content] group centers together — the gutter absorbs the left
+     free space, the content the right, so no gap opens between numbers and
+     text. "edge" pins the gutter to the far-left instead (text stays centered).
+     On a narrow editor (or with long, non-wrapped lines) free space is zero and
+     all of this is a no-op. */
+  margin-left: auto;
+}
+.cm-editor .cm-gutters ~ .cm-content {
+  margin-left: 0;
+}
+/* "Editor edge": pin numbers to the far-left; the text column stays centered. */
+:root[data-line-number-position="edge"] .cm-editor .cm-gutters {
+  margin-left: 0;
+}
+:root[data-line-number-position="edge"] .cm-editor .cm-gutters ~ .cm-content {
+  margin-left: auto;
+}
+/* Left-aligned content always packs the gutter + text against the left edge,
+   regardless of the line-number position setting. Listed last so it wins the
+   specificity tie with the "edge" rules above. */
+:root[data-content-align="left"] .cm-editor .cm-gutters {
+  margin-left: 0;
+}
+:root[data-content-align="left"] .cm-editor .cm-gutters ~ .cm-content {
+  margin-left: 0;
 }
 .cm-editor .cm-gutter {
   background: transparent;
