@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.adibhanna.zennotes</id>
+  <id>org.zennotes.ZenNotes</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>ZenNotes</name>
@@ -20,7 +20,7 @@
       <li>Archive, trash, quick capture, and a built-in command-line companion</li>
     </ul>
   </description>
-  <launchable type="desktop-id">com.adibhanna.zennotes.desktop</launchable>
+  <launchable type="desktop-id">org.zennotes.ZenNotes.desktop</launchable>
   <screenshots>
     <screenshot type="default">
       <image>https://zennotes.org/images/app.png</image>
@@ -30,13 +30,25 @@
   <url type="homepage">https://zennotes.org</url>
   <url type="bugtracker">https://github.com/ZenNotes/zennotes/issues</url>
   <url type="vcs-browser">https://github.com/ZenNotes/zennotes</url>
-  <developer id="com.adibhanna">
+  <developer id="org.zennotes">
     <name>Adib Hanna</name>
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
-    <release version="2.5.0" date="2026-06-22"/>
-    <release version="2.4.0" date="2026-06-19"/>
-    <release version="2.3.0" date="2026-06-13"/>
+    <release version="2.5.0" date="2026-06-22">
+      <description>
+        <p>Real Markdown highlighting, system-wide quick capture on Wayland, manual note ordering, and the Kanagawa theme.</p>
+      </description>
+    </release>
+    <release version="2.4.0" date="2026-06-19">
+      <description>
+        <p>Maintenance release with editor and vault improvements.</p>
+      </description>
+    </release>
+    <release version="2.3.0" date="2026-06-13">
+      <description>
+        <p>Maintenance release with editor and vault improvements.</p>
+      </description>
+    </release>
   </releases>
 </component>

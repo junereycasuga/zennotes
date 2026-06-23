@@ -1,4 +1,4 @@
-app-id: com.adibhanna.zennotes
+app-id: org.zennotes.ZenNotes
 runtime: org.freedesktop.Platform
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
@@ -30,7 +30,7 @@ modules:
       - |
         for s in 16 24 32 48 64 128 256 512; do
           install -Dm644 "squashfs-root/usr/share/icons/hicolor/${s}x${s}/apps/ZenNotes.png" \
-            "/app/share/icons/hicolor/${s}x${s}/apps/com.adibhanna.zennotes.png"
+            "/app/share/icons/hicolor/${s}x${s}/apps/org.zennotes.ZenNotes.png"
         done
       # Copy the unpacked Electron app into /app, dropping AppImage-only bits.
       - mkdir -p /app/zennotes
@@ -41,10 +41,10 @@ modules:
       - rm -f /app/zennotes/chrome-sandbox
       - chmod -R a+rX /app/zennotes
       - install -Dm755 zennotes.sh /app/bin/zennotes
-      - install -Dm644 com.adibhanna.zennotes.desktop
-          /app/share/applications/com.adibhanna.zennotes.desktop
-      - install -Dm644 com.adibhanna.zennotes.metainfo.xml
-          /app/share/metainfo/com.adibhanna.zennotes.metainfo.xml
+      - install -Dm644 org.zennotes.ZenNotes.desktop
+          /app/share/applications/org.zennotes.ZenNotes.desktop
+      - install -Dm644 org.zennotes.ZenNotes.metainfo.xml
+          /app/share/metainfo/org.zennotes.ZenNotes.metainfo.xml
     sources:
       # Bump `url` + `sha256` on each release (see README.md).
       - type: file
@@ -54,6 +54,6 @@ modules:
       - type: file
         path: zennotes.sh
       - type: file
-        path: com.adibhanna.zennotes.desktop
+        path: org.zennotes.ZenNotes.desktop
       - type: file
-        path: com.adibhanna.zennotes.metainfo.xml
+        path: org.zennotes.ZenNotes.metainfo.xml
