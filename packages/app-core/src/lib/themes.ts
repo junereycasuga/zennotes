@@ -20,6 +20,8 @@ export type ThemeFamily =
   | 'tokyo-night'
   | 'kanagawa'
   | 'black-metal'
+  // User-authored themes loaded from ~/.config/zennotes/themes (see lib/custom-themes).
+  | 'custom'
 export type ThemeMode = 'light' | 'dark' | 'auto'
 
 export interface ThemeOption {

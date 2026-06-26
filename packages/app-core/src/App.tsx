@@ -1,6 +1,13 @@
 import { lazy, Suspense, useEffect, useMemo, useRef } from 'react'
-import { useStore, initConfigSync } from './store'
-import { resolveAuto } from './lib/themes'
+import { useStore, initConfigSync, initCustomThemes, initSnippets } from './store'
+import { resolveAuto, findTheme } from './lib/themes'
+import {
+  injectActiveTheme,
+  injectSnippets,
+  isCustomThemeId,
+  customThemeSlugFromId,
+  resolveCustomThemeMode
+} from './lib/custom-themes'
 import { Sidebar } from './components/Sidebar'
 import { NoteList } from './components/NoteList'
 import { TitleBar } from './components/TitleBar'
@@ -264,6 +271,9 @@ function App(): JSX.Element {
   const themeId = useStore((s) => s.themeId)
   const themeFamily = useStore((s) => s.themeFamily)
   const themeMode = useStore((s) => s.themeMode)
+  const customThemes = useStore((s) => s.customThemes)
+  const snippets = useStore((s) => s.snippets)
+  const enabledSnippets = useStore((s) => s.enabledSnippets)
   const editorFontSize = useStore((s) => s.editorFontSize)
   const editorLineHeight = useStore((s) => s.editorLineHeight)
   const previewMaxWidth = useStore((s) => s.previewMaxWidth)
@@ -324,6 +334,8 @@ function App(): JSX.Element {
   // edits (synced dotfile / hand-edit). Desktop-only; a no-op on web.
   useEffect(() => {
     initConfigSync()
+    initCustomThemes()
+    initSnippets()
   }, [])
 
   // Drag a markdown file from the OS onto the window to open it. Desktop
@@ -398,18 +410,27 @@ function App(): JSX.Element {
     return () => window.removeEventListener('beforeunload', flush)
   }, [flushDirtyNotes])
 
-  // Apply theme: set html[data-theme=...] based on mode/family/id.
-  // When mode === 'auto', we mirror `prefers-color-scheme` and also
-  // react to changes while the app is running.
+  // Apply theme: set html[data-theme=...] + html[data-theme-mode=...] based on
+  // mode/family/id. Custom themes keep one id (`custom-<slug>`) and express
+  // light/dark via `data-theme-mode`; built-ins encode mode in their id but we
+  // mirror it onto `data-theme-mode` too so snippets/custom CSS can rely on it
+  // universally. When mode === 'auto' we mirror `prefers-color-scheme` live.
   useEffect(() => {
     const html = document.documentElement
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = (): void => {
-      let id = themeId
-      if (themeMode === 'auto') {
-        id = resolveAuto(themeFamily, mql.matches, themeId)
+      const prefersDark = mql.matches
+      if (isCustomThemeId(themeId)) {
+        const slug = customThemeSlugFromId(themeId)
+        const theme = customThemes.find((t) => t.slug === slug)
+        const wantDark = themeMode === 'auto' ? prefersDark : themeMode === 'dark'
+        html.dataset.theme = themeId
+        html.dataset.themeMode = resolveCustomThemeMode(theme, wantDark)
+      } else {
+        const id = themeMode === 'auto' ? resolveAuto(themeFamily, prefersDark, themeId) : themeId
+        html.dataset.theme = id
+        html.dataset.themeMode = findTheme(id).mode
       }
-      html.dataset.theme = id
     }
     apply()
     if (themeMode === 'auto') {
@@ -417,7 +438,18 @@ function App(): JSX.Element {
       return () => mql.removeEventListener('change', apply)
     }
     return undefined
-  }, [themeId, themeFamily, themeMode])
+  }, [themeId, themeFamily, themeMode, customThemes])
+
+  // Inject the active custom theme's raw CSS (built-ins clear it). Reacts to
+  // theme switches and to live edits arriving via the file watcher.
+  useEffect(() => {
+    injectActiveTheme(themeId, customThemes)
+  }, [themeId, customThemes])
+
+  // Inject enabled CSS snippets on top of the active theme.
+  useEffect(() => {
+    injectSnippets(snippets, enabledSnippets)
+  }, [snippets, enabledSnippets])
 
   // Apply editor font size + line height + all three font families as
   // CSS variables. Each family has its own fallback stack so leaving it

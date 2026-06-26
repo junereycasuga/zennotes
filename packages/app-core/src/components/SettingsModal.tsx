@@ -25,7 +25,7 @@ import {
   type McpInstructionsPayload,
   type McpServerRuntime
 } from '@shared/mcp-clients'
-import { useStore } from '../store'
+import { useStore, refreshCustomThemes, refreshSnippets } from '../store'
 import type { LineNumberMode, WhichKeyHintMode } from '../store'
 import type { KeymapDefinition, KeymapId, KeymapOverrides } from '../lib/keymaps'
 import {
@@ -38,6 +38,10 @@ import {
   shortcutBindingFromEvent
 } from '../lib/keymaps'
 import { resolveAuto, THEMES, type ThemeFamily, type ThemeMode } from '../lib/themes'
+import { customThemeSlugFromId } from '../lib/custom-themes'
+import { TrashIcon, ExternalIcon } from './icons'
+import { customThemeSupportsMode, type CustomTheme } from '@shared/custom-themes'
+import { isSnippetEnabled, type Snippet } from '@shared/snippets'
 import { hasSystemFontAccess, listSystemFonts } from '../lib/system-fonts'
 import {
   DEFAULT_SYSTEM_FOLDER_LABELS,
@@ -63,6 +67,7 @@ import { useAppUpdateState } from '../lib/app-update-state'
 import { getZenBridge } from '@zennotes/bridge-contract/bridge'
 import companyLogo from '../assets/lumary-labs-logo.svg'
 import { confirmApp } from '../lib/confirm-requests'
+import { promptApp } from '../lib/prompt-requests'
 import { isImeComposing } from '../lib/ime'
 import { RemoteWorkspaceProfileModal } from './RemoteWorkspaceProfileModal'
 import { Button } from './ui/Button'
@@ -449,6 +454,10 @@ export function SettingsModal(): JSX.Element {
   const themeFamily = useStore((s) => s.themeFamily)
   const themeMode = useStore((s) => s.themeMode)
   const setTheme = useStore((s) => s.setTheme)
+  const customThemes = useStore((s) => s.customThemes)
+  const snippets = useStore((s) => s.snippets)
+  const enabledSnippets = useStore((s) => s.enabledSnippets)
+  const setSnippetEnabled = useStore((s) => s.setSnippetEnabled)
   const editorFontSize = useStore((s) => s.editorFontSize)
   const setEditorFontSize = useStore((s) => s.setEditorFontSize)
   const editorLineHeight = useStore((s) => s.editorLineHeight)
@@ -693,7 +702,7 @@ export function SettingsModal(): JSX.Element {
     // When family changes, keep the mode the same and pick the canonical
     // first variant in that family (medium for gruvbox, default for
     // catppuccin/github).
-    const preferred: Record<ThemeFamily, { light: string; dark: string }> = {
+    const preferred: Partial<Record<ThemeFamily, { light: string; dark: string }>> = {
       apple: { light: 'apple-light', dark: 'apple-dark' },
       gruvbox: { light: 'light-medium', dark: 'dark-medium' },
       catppuccin: { light: 'catppuccin-latte', dark: 'catppuccin-mocha' },
@@ -705,13 +714,26 @@ export function SettingsModal(): JSX.Element {
       kanagawa: { light: 'kanagawa-lotus', dark: 'kanagawa-wave' },
       'black-metal': { light: 'black-metal-day', dark: 'black-metal' }
     }
-    const targetId = preferred[family][effectiveMode]
-    setTheme({ id: targetId, family, mode: themeMode })
+    // Custom themes have their own picker section, so this only runs for built-ins.
+    const pref = preferred[family]
+    if (!pref) return
+    setTheme({ id: pref[effectiveMode], family, mode: themeMode })
   }
 
   const pickMode = (mode: ThemeMode): void => {
     if (mode === 'auto') {
       setTheme({ id: themeId, family: themeFamily, mode: 'auto' })
+      return
+    }
+    // A custom theme keeps its single id (`custom-<slug>`) and just changes the
+    // mode — clamped to what the theme supports (a dark-only theme ignores a
+    // "light" pick). Built-in families fall through to the variant logic below.
+    if (themeFamily === 'custom') {
+      const slug = customThemeSlugFromId(themeId)
+      const theme = slug ? customThemes.find((t) => t.slug === slug) : null
+      if (theme && customThemeSupportsMode(theme, mode)) {
+        setTheme({ id: `custom-${theme.slug}`, family: 'custom', mode })
+      }
       return
     }
     // Flip to the mode-equivalent variant in the same family. For
@@ -737,6 +759,79 @@ export function SettingsModal(): JSX.Element {
     // by `effectiveMode`.
     const nextMode: ThemeMode = themeMode === 'auto' ? 'auto' : t.mode
     setTheme({ id: t.id, family: t.family, mode: nextMode })
+  }
+
+  const pickCustomTheme = (theme: CustomTheme): void => {
+    if (theme.error) return
+    // A both-mode theme follows the global light/dark/auto toggle; a single-mode
+    // theme pins its one mode.
+    const mode: ThemeMode = theme.modes === 'both' ? themeMode : theme.modes
+    setTheme({ id: `custom-${theme.slug}`, family: 'custom', mode })
+  }
+
+  const revealThemesFolder = (): void => {
+    void window.zen.revealCustomThemesDir?.()
+  }
+
+  const revealCustomTheme = (theme: CustomTheme): void => {
+    void window.zen.revealCustomThemesDir?.(theme.slug)
+  }
+
+  const removeCustomTheme = async (theme: CustomTheme): Promise<void> => {
+    const ok = await confirmApp({
+      title: `Remove “${theme.name}”?`,
+      description: `This deletes the “${theme.slug}” folder from your themes folder. You can add it back any time.`,
+      confirmLabel: 'Remove',
+      danger: true
+    })
+    if (!ok) return
+    // If the theme being removed is the active one, step back to a built-in
+    // first so the UI doesn't fall through to the default theme mid-delete.
+    if (customThemeSlugFromId(themeId) === theme.slug) {
+      setTheme({
+        id: effectiveMode === 'dark' ? 'apple-dark' : 'apple-light',
+        family: 'apple',
+        mode: themeMode
+      })
+    }
+    await window.zen.deleteCustomTheme?.(theme.slug)
+    refreshCustomThemes()
+  }
+
+  const createTheme = async (): Promise<void> => {
+    const name = await promptApp({
+      title: 'New theme',
+      description: 'Creates a folder with a manifest.json and theme.css you can edit.',
+      placeholder: 'My Theme',
+      initialValue: 'My Theme',
+      okLabel: 'Create'
+    })
+    if (name === null) return
+    const slug = await window.zen.createCustomTheme?.({ name: name.trim() || 'My Theme' })
+    if (slug) {
+      refreshCustomThemes()
+      void window.zen.revealCustomThemesDir?.(slug)
+    }
+  }
+
+  const revealSnippetsFolder = (): void => {
+    void window.zen.revealSnippetsDir?.()
+  }
+
+  const revealSnippet = (snippet: Snippet): void => {
+    void window.zen.revealSnippetsDir?.(snippet.name)
+  }
+
+  const removeSnippet = async (snippet: Snippet): Promise<void> => {
+    const ok = await confirmApp({
+      title: `Remove “${snippet.name}”?`,
+      description: `This deletes ${snippet.name} from your snippets folder. You can add it back any time.`,
+      confirmLabel: 'Remove',
+      danger: true
+    })
+    if (!ok) return
+    await window.zen.deleteSnippet?.(snippet.name)
+    refreshSnippets()
   }
 
   const ref = useRef<HTMLDivElement | null>(null)
@@ -955,6 +1050,174 @@ export function SettingsModal(): JSX.Element {
                   </div>
                 </div>
               )}
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-ink-500">
+                    Custom
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => void createTheme()}
+                      className="text-xs text-ink-500 transition-colors hover:text-ink-800"
+                    >
+                      New theme
+                    </button>
+                    <button
+                      onClick={revealThemesFolder}
+                      className="text-xs text-ink-500 transition-colors hover:text-ink-800"
+                    >
+                      Open themes folder
+                    </button>
+                  </div>
+                </div>
+                {customThemes.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-paper-300/70 px-3 py-3 text-xs leading-5 text-ink-500">
+                    Create a theme — or drop a folder with a{' '}
+                    <span className="font-mono text-ink-700">manifest.json</span> +{' '}
+                    <span className="font-mono text-ink-700">theme.css</span> into your themes
+                    folder. Start from the bundled <span className="text-ink-700">Soft Paper</span>{' '}
+                    example or its <span className="font-mono text-ink-700">README</span>.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+                    {customThemes.map((theme) => {
+                      const isActive =
+                        !theme.error && customThemeSlugFromId(themeId) === theme.slug
+                      const swatchLight = theme.preview?.light ?? '#d8d8dc'
+                      const swatchDark = theme.preview?.dark ?? '#3a3a3c'
+                      const left = theme.modes === 'dark' ? swatchDark : swatchLight
+                      const right = theme.modes === 'light' ? swatchLight : swatchDark
+                      return (
+                        <div key={theme.slug} className="group relative">
+                          {theme.error ? (
+                            <div
+                              className="rounded-xl border border-danger/40 bg-danger/5 px-3 py-2.5 pr-16 text-left"
+                              title={theme.error}
+                            >
+                              <div className="truncate text-sm text-ink-800">{theme.name}</div>
+                              <div className="mt-0.5 line-clamp-2 text-xs text-danger">
+                                {theme.error}
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => pickCustomTheme(theme)}
+                              className={[
+                                'flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 pr-16 text-left text-sm transition-colors',
+                                isActive
+                                  ? 'border-accent/45 bg-accent/10 text-ink-900'
+                                  : 'border-paper-300/70 bg-paper-100/70 text-ink-700 hover:bg-paper-200/80'
+                              ].join(' ')}
+                            >
+                              <span className="relative flex h-6 w-6 shrink-0 overflow-hidden rounded-md border border-paper-300/70">
+                                <span className="flex-1" style={{ background: left }} />
+                                <span className="flex-1" style={{ background: right }} />
+                              </span>
+                              <span className="flex min-w-0 flex-1 flex-col">
+                                <span className="truncate">{theme.name}</span>
+                                {theme.author && (
+                                  <span className="truncate text-[11px] text-ink-400">
+                                    {theme.author}
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+                          )}
+                          <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => revealCustomTheme(theme)}
+                              aria-label={`Reveal ${theme.name} in file manager`}
+                              title="Reveal file"
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-paper-300/70 hover:text-ink-800 focus:opacity-100 focus:outline-none"
+                            >
+                              <ExternalIcon width={13} height={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void removeCustomTheme(theme)}
+                              aria-label={`Remove ${theme.name}`}
+                              title="Remove theme"
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-paper-300/70 hover:text-danger focus:opacity-100 focus:outline-none"
+                            >
+                              <TrashIcon width={13} height={13} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-ink-500">
+                    Snippets
+                  </div>
+                  <button
+                    onClick={revealSnippetsFolder}
+                    className="text-xs text-ink-500 transition-colors hover:text-ink-800"
+                  >
+                    Open snippets folder
+                  </button>
+                </div>
+                {snippets.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-paper-300/70 px-3 py-3 text-xs leading-5 text-ink-500">
+                    Drop a <span className="font-mono text-ink-700">.css</span> file into your
+                    snippets folder to tweak any theme, then toggle it on here. Snippets layer on top
+                    of whichever theme is active.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {snippets.map((snippet) => (
+                      <div
+                        key={snippet.name}
+                        className="group relative flex items-center rounded-xl border border-paper-300/70 bg-paper-100/70 px-3 py-2 pr-16"
+                      >
+                        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isSnippetEnabled(enabledSnippets, snippet.name)}
+                            disabled={!!snippet.error}
+                            onChange={(e) => setSnippetEnabled(snippet.name, e.target.checked)}
+                            className="h-4 w-4 shrink-0 accent-accent"
+                          />
+                          <span className="min-w-0 flex-1 truncate font-mono text-xs text-ink-700">
+                            {snippet.name}
+                          </span>
+                          {snippet.error && (
+                            <span className="shrink-0 text-xs text-danger" title={snippet.error}>
+                              error
+                            </span>
+                          )}
+                        </label>
+                        <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => revealSnippet(snippet)}
+                            aria-label={`Reveal ${snippet.name} in file manager`}
+                            title="Reveal file"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-paper-300/70 hover:text-ink-800 focus:opacity-100 focus:outline-none"
+                          >
+                            <ExternalIcon width={13} height={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void removeSnippet(snippet)}
+                            aria-label={`Remove ${snippet.name}`}
+                            title="Remove snippet"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-paper-300/70 hover:text-danger focus:opacity-100 focus:outline-none"
+                          >
+                            <TrashIcon width={13} height={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </Section>
 

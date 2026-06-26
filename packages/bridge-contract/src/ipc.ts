@@ -121,7 +121,17 @@ export const IPC = {
   CONFIG_SET: 'config:set',
   CONFIG_GET_PATH: 'config:get-path',
   CONFIG_REVEAL: 'config:reveal',
-  CONFIG_ON_CHANGE: 'config:on-change'
+  CONFIG_ON_CHANGE: 'config:on-change',
+  CUSTOM_THEMES_LIST: 'custom-themes:list',
+  CUSTOM_THEMES_GET_DIR: 'custom-themes:get-dir',
+  CUSTOM_THEMES_REVEAL: 'custom-themes:reveal',
+  CUSTOM_THEMES_DELETE: 'custom-themes:delete',
+  CUSTOM_THEMES_CREATE: 'custom-themes:create',
+  CUSTOM_THEMES_ON_CHANGE: 'custom-themes:on-change',
+  SNIPPETS_LIST: 'snippets:list',
+  SNIPPETS_REVEAL: 'snippets:reveal',
+  SNIPPETS_DELETE: 'snippets:delete',
+  SNIPPETS_ON_CHANGE: 'snippets:on-change'
 } as const
 
 export interface TikzRenderResponse {

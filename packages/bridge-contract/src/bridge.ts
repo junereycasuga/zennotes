@@ -48,6 +48,8 @@ import type {
   McpServerRuntime
 } from '@zennotes/shared-domain/mcp-clients'
 import type { AppConfigPortable } from '@zennotes/shared-domain/app-config'
+import type { CustomTheme } from '@zennotes/shared-domain/custom-themes'
+import type { Snippet } from '@zennotes/shared-domain/snippets'
 
 export interface ZenCapabilities {
   supportsUpdater: boolean
@@ -255,6 +257,29 @@ export interface ZenBridge {
   /** Subscribe to external edits of the config file (e.g. a synced dotfile or
    *  a hand-edit). The callback receives the new portable config. */
   onConfigChange(cb: (next: AppConfigPortable) => void): () => void
+  /** User themes loaded from `~/.config/zennotes/themes/<slug>/`. Empty on web. */
+  listCustomThemes(): Promise<CustomTheme[]>
+  /** Absolute path of the custom-themes directory, or null when unsupported. */
+  getCustomThemesDir(): Promise<string | null>
+  /** Reveal the themes directory in the file manager — or a specific theme's
+   *  `theme.css` when a slug is given (creating the dir if needed). */
+  revealCustomThemesDir(slug?: string): Promise<void>
+  /** Delete a custom theme's folder (`<slug>/`) from the themes directory. */
+  deleteCustomTheme(slug: string): Promise<void>
+  /** Scaffold a new theme folder from a starter palette. Resolves to the new
+   *  slug, or null on failure / when unsupported (web). */
+  createCustomTheme(input: { name?: string }): Promise<string | null>
+  /** Subscribe to changes in the themes directory (file added/edited/removed). */
+  onCustomThemesChange(cb: (next: CustomTheme[]) => void): () => void
+  /** CSS snippets from `~/.config/zennotes/snippets/*.css`. Empty on web. */
+  listSnippets(): Promise<Snippet[]>
+  /** Reveal the snippets directory — or a specific snippet file when a name is
+   *  given (creating the dir if needed). */
+  revealSnippetsDir(name?: string): Promise<void>
+  /** Delete a snippet file (`<name>`) from the snippets directory. */
+  deleteSnippet(name: string): Promise<void>
+  /** Subscribe to changes in the snippets directory. */
+  onSnippetsChange(cb: (next: Snippet[]) => void): () => void
 }
 
 let installedBridge: ZenBridge | null = null

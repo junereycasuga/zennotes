@@ -155,6 +155,11 @@ export const HELP_HOW_TO_GUIDES: HelpCard[] = [
     title: 'Run the self-hosted web version with Docker',
     body:
       'Prefer ZenNotes in a browser instead of the desktop app? Pull the prebuilt, multi-arch image from Docker Hub with `docker pull adibhanna/zennotes`, generate a login token and keep a copy (`openssl rand -hex 32`), then start the container with your vault mounted:\n`docker run -d -p 127.0.0.1:7878:7878 \\\n  -e ZENNOTES_AUTH_TOKEN=<your-token> \\\n  -v "$HOME/Documents/MyVault:/workspace" \\\n  -v "$HOME/zennotes-data:/data" \\\n  adibhanna/zennotes:latest`\nThe server binds to 0.0.0.0, so it will not start without that token — open http://localhost:7878 and paste the token on first connect. Your notes stay as ordinary .md files on the host, and the desktop app can point at the same server. The full walkthrough, including reverse-proxy and TLS hardening, lives at zennotes.org/docs.'
+  },
+  {
+    title: 'Build your own theme or tweak an existing one',
+    body:
+      'ZenNotes themes are CSS. Open Settings → Appearance → Custom and choose New theme to scaffold a folder (`~/.config/zennotes/themes/<name>/` with a `manifest.json` and a `theme.css`), or drop one in yourself — edits apply live. Set the `--z-*` design tokens under `:root` and put dark-mode overrides under `:root[data-theme-mode="dark"]`. Bundle fonts or images beside the file and reference them with `url(zen-theme://<your-folder>/file.woff2)` (remote URLs are not loaded). To change just one thing about *any* theme, add a CSS snippet under Settings → Appearance → Snippets: a small `.css` file you toggle on or off — target `:root[data-theme] { --z-accent: 255 59 48; }` so it wins over the active theme.'
   }
 ]
 

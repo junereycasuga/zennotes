@@ -1532,7 +1532,21 @@ export const httpBridge: ZenBridge = {
   setConfig: async () => {},
   getConfigPath: async () => null,
   revealConfigFile: async () => {},
-  onConfigChange: () => () => {}
+  onConfigChange: () => () => {},
+
+  // Custom themes + CSS snippets are desktop-only (they read/write files under
+  // ~/.config/zennotes). On web these are no-ops so the shared bridge contract
+  // is still satisfied.
+  listCustomThemes: async () => [],
+  getCustomThemesDir: async () => null,
+  revealCustomThemesDir: async () => {},
+  deleteCustomTheme: async () => {},
+  createCustomTheme: async () => null,
+  onCustomThemesChange: () => () => {},
+  listSnippets: async () => [],
+  revealSnippetsDir: async () => {},
+  deleteSnippet: async () => {},
+  onSnippetsChange: () => () => {}
 }
 
 export function installBridge(): void {

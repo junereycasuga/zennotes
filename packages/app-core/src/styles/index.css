@@ -182,6 +182,19 @@
 }
 
 /* ===========================================================================
+ * Custom (user-authored) themes — color-scheme follows the resolved mode.
+ * Built-ins set color-scheme per data-theme id; custom themes use one id
+ * (custom-<slug>) plus data-theme-mode, so map it here as a fallback for
+ * hand-authored themes that don't set color-scheme themselves.
+ * =======================================================================*/
+:root[data-theme^='custom-'][data-theme-mode='light'] {
+  color-scheme: light;
+}
+:root[data-theme^='custom-'][data-theme-mode='dark'] {
+  color-scheme: dark;
+}
+
+/* ===========================================================================
  * Apple — clean macOS-style system palette (default theme family)
  * =======================================================================*/
 

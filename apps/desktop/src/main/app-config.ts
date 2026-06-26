@@ -159,7 +159,7 @@ const SCALAR_FIELDS: Partial<Record<PortablePrefKey, ScalarFieldMap>> = {
     section: 'appearance',
     tomlKey: 'theme_family',
     comment:
-      'apple | gruvbox | catppuccin | github | solarized | one | nord | tokyo-night | kanagawa | black-metal'
+      'apple | gruvbox | catppuccin | github | solarized | one | nord | tokyo-night | kanagawa | black-metal | custom'
   },
   themeMode: { section: 'appearance', tomlKey: 'theme_mode', comment: 'light | dark | auto' },
   themeId: {
@@ -274,6 +274,11 @@ const MAP_TABLE_FIELDS: Partial<Record<PortablePrefKey, MapTableField>> = {
     table: 'kanban_column_titles',
     comment: ['Kanban column title overrides, keyed by "<groupBy>:<columnId>".'],
     example: '"status:todo" = "To Do"'
+  },
+  enabledSnippets: {
+    table: 'snippets',
+    comment: ['Enabled CSS snippets — list the filenames you want active.'],
+    example: '"focus.css" = "on"'
   }
 }
 

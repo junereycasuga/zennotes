@@ -59,6 +59,9 @@ import {
   type TaskPriority as TaskLinePriority
 } from '@shared/tasklists'
 import { DEFAULT_THEME_ID, THEMES, type ThemeFamily, type ThemeMode } from './lib/themes'
+import { isCustomThemeId } from './lib/custom-themes'
+import { customThemeSlugFromId, type CustomTheme } from '@shared/custom-themes'
+import type { Snippet } from '@shared/snippets'
 import { formatMarkdown } from './lib/format-markdown'
 import { confirmMoveToTrash } from './lib/confirm-trash'
 import { confirmApp } from './lib/confirm-requests'
@@ -178,7 +181,8 @@ const VALID_FAMILIES: ThemeFamily[] = [
   'nord',
   'tokyo-night',
   'kanagawa',
-  'black-metal'
+  'black-metal',
+  'custom'
 ]
 const VALID_MODES: ThemeMode[] = ['light', 'dark', 'auto']
 const VALID_SORTS: NoteSortOrder[] = [
@@ -340,6 +344,8 @@ interface Prefs {
    *  (like `set clipboard=unnamed`). */
   vimYankToClipboard: boolean
   keymapOverrides: KeymapOverrides
+  /** Enabled CSS snippets, keyed by filename (e.g. `"focus.css": "on"`). Persisted. */
+  enabledSnippets: Record<string, string>
   /** When true, pressing the leader key shows the next available Vim-style actions. */
   whichKeyHints: boolean
   /** Whether leader hints auto-hide after a timeout or stay open until dismissed. */
@@ -513,6 +519,7 @@ export const DEFAULT_PREFS: Prefs = {
   themeId: DEFAULT_THEME_ID,
   themeFamily: 'gruvbox',
   themeMode: 'dark',
+  enabledSnippets: {},
   editorFontSize: 16,
   editorLineHeight: 1.7,
   previewMaxWidth: 920,
@@ -569,7 +576,7 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
       ? p.themeMode
       : DEFAULT_PREFS.themeMode
   const themeId =
-    p.themeId && THEMES.some((t) => t.id === p.themeId)
+    p.themeId && (THEMES.some((t) => t.id === p.themeId) || isCustomThemeId(p.themeId))
       ? p.themeId
       : DEFAULT_PREFS.themeId
   return {
@@ -583,6 +590,7 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
         ? p.vimYankToClipboard
         : DEFAULT_PREFS.vimYankToClipboard,
     keymapOverrides: normalizeKeymapOverrides(p.keymapOverrides),
+    enabledSnippets: normalizeEnabledSnippets(p.enabledSnippets),
     whichKeyHints:
       typeof p.whichKeyHints === 'boolean'
         ? p.whichKeyHints
@@ -1341,6 +1349,7 @@ function collectPrefs(s: {
   vimInsertEscape: string
   vimYankToClipboard: boolean
   keymapOverrides: KeymapOverrides
+  enabledSnippets: Record<string, string>
   whichKeyHints: boolean
   whichKeyHintMode: WhichKeyHintMode
   whichKeyHintTimeoutMs: number
@@ -1402,6 +1411,7 @@ function collectPrefs(s: {
     vimInsertEscape: s.vimInsertEscape,
     vimYankToClipboard: s.vimYankToClipboard,
     keymapOverrides: s.keymapOverrides,
+    enabledSnippets: s.enabledSnippets,
     whichKeyHints: s.whichKeyHints,
     whichKeyHintMode: s.whichKeyHintMode,
     whichKeyHintTimeoutMs: s.whichKeyHintTimeoutMs,
@@ -1770,6 +1780,8 @@ interface Store {
   /** When true, Vim yank/delete/change also copy to the system clipboard. Persisted. */
   vimYankToClipboard: boolean
   keymapOverrides: KeymapOverrides
+  /** Enabled CSS snippets, keyed by filename. Persisted to config [snippets]. */
+  enabledSnippets: Record<string, string>
   whichKeyHints: boolean
   whichKeyHintMode: WhichKeyHintMode
   whichKeyHintTimeoutMs: number
@@ -1869,6 +1881,15 @@ interface Store {
    *  and kept incrementally fresh via the chokidar watcher while the view
    *  is visible. */
   vaultTasks: VaultTask[]
+
+  /** User themes parsed from ~/.config/zennotes/themes. Loaded + watched by
+   *  `initCustomThemes`; the CSS is injected as it changes. */
+  customThemes: CustomTheme[]
+  /** User CSS snippets parsed from ~/.config/zennotes/snippets. Loaded + watched
+   *  by `initSnippets`; enabled ones are injected on top of the active theme. */
+  snippets: Snippet[]
+  /** Toggle a snippet on/off (persists to the config [snippets] table). */
+  setSnippetEnabled(name: string, on: boolean): void
   tasksLoading: boolean
   tasksFilter: string
   taskCursorIndex: number
@@ -3176,6 +3197,7 @@ export const useStore = create<Store>((set, get) => {
   vimInsertEscape: loadPrefs().vimInsertEscape,
   vimYankToClipboard: loadPrefs().vimYankToClipboard,
   keymapOverrides: loadPrefs().keymapOverrides,
+  enabledSnippets: loadPrefs().enabledSnippets,
   whichKeyHints: loadPrefs().whichKeyHints,
   whichKeyHintMode: loadPrefs().whichKeyHintMode,
   whichKeyHintTimeoutMs: loadPrefs().whichKeyHintTimeoutMs,
@@ -3233,6 +3255,8 @@ export const useStore = create<Store>((set, get) => {
   kanbanColumnTitles: loadPrefs().kanbanColumnTitles,
   hasCompletedOnboarding: loadPrefs().hasCompletedOnboarding,
   vaultTasks: [],
+  customThemes: [],
+  snippets: [],
   tasksLoading: false,
   tasksFilter: '',
   taskCursorIndex: 0,
@@ -4834,6 +4858,15 @@ export const useStore = create<Store>((set, get) => {
   },
   resetAllKeymaps: () => {
     set({ keymapOverrides: {} })
+    savePrefs(collectPrefs(get()))
+  },
+  setSnippetEnabled: (name, on) => {
+    set((s) => {
+      const next = { ...s.enabledSnippets }
+      if (on) next[name] = 'on'
+      else delete next[name]
+      return { enabledSnippets: next }
+    })
     savePrefs(collectPrefs(get()))
   },
   setWhichKeyHints: (on) => {
@@ -7122,6 +7155,97 @@ export function initConfigSync(): void {
   if (typeof bridge.onConfigChange === 'function') {
     try {
       bridge.onConfigChange((nextCfg) => applyPortableConfig(nextCfg))
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function applyCustomThemes(themes: CustomTheme[]): void {
+  useStore.setState({ customThemes: themes })
+  // App.tsx injects the active theme's CSS in response to the state change.
+  // One-time canonicalization of any legacy two-id custom selection
+  // (`custom-<slug>-<mode>`) persisted by the pre-release WIP: only rewrites
+  // when the stored id doesn't match a loaded theme but its stripped form does,
+  // so a real theme whose slug ends in `-light`/`-dark` is left untouched.
+  const { themeId, themeMode } = useStore.getState()
+  if (isCustomThemeId(themeId)) {
+    const slug = customThemeSlugFromId(themeId)
+    if (slug && !themes.some((t) => t.slug === slug)) {
+      const legacy = /^custom-(.+)-(?:light|dark)$/.exec(themeId)
+      if (legacy && themes.some((t) => t.slug === legacy[1])) {
+        useStore
+          .getState()
+          .setTheme({ id: `custom-${legacy[1]}`, family: 'custom', mode: themeMode })
+      }
+    }
+  }
+}
+
+/** Re-scan the themes dir and apply the result. Used after an in-app change
+ *  (e.g. deleting a theme) so the UI updates without waiting on the watcher. */
+export function refreshCustomThemes(): void {
+  const bridge = typeof window !== 'undefined' ? window.zen : undefined
+  if (!bridge || typeof bridge.listCustomThemes !== 'function') return
+  void bridge.listCustomThemes().then(applyCustomThemes).catch(() => {})
+}
+
+/**
+ * Load user themes from the config dir, inject their CSS, and keep both in sync
+ * as files change. Safe to call on web (no bridge → no-op).
+ */
+export function initCustomThemes(): void {
+  const bridge = typeof window !== 'undefined' ? window.zen : undefined
+  if (!bridge || typeof bridge.listCustomThemes !== 'function') return
+  refreshCustomThemes()
+  if (typeof bridge.onCustomThemesChange === 'function') {
+    try {
+      bridge.onCustomThemesChange(applyCustomThemes)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Keep only string→string entries with a `.css` key (tolerant of hand edits). */
+function normalizeEnabledSnippets(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+      if (key.toLowerCase().endsWith('.css') && typeof value === 'string' && value) {
+        out[key] = value
+      }
+    }
+  }
+  return out
+}
+
+function applySnippets(snippets: Snippet[]): void {
+  useStore.setState({ snippets })
+  // App.tsx injects the enabled snippets in response to the state change.
+}
+
+/** Re-scan the snippets dir and apply the result. */
+export function refreshSnippets(): void {
+  const bridge = typeof window !== 'undefined' ? window.zen : undefined
+  if (!bridge || typeof bridge.listSnippets !== 'function') return
+  void bridge
+    .listSnippets()
+    .then(applySnippets)
+    .catch(() => {})
+}
+
+/**
+ * Load user snippets from the config dir and keep them in sync as files change.
+ * Safe to call on web (no bridge → no-op).
+ */
+export function initSnippets(): void {
+  const bridge = typeof window !== 'undefined' ? window.zen : undefined
+  if (!bridge || typeof bridge.listSnippets !== 'function') return
+  refreshSnippets()
+  if (typeof bridge.onSnippetsChange === 'function') {
+    try {
+      bridge.onSnippetsChange(applySnippets)
     } catch {
       /* ignore */
     }

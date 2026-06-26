@@ -102,7 +102,26 @@ import {
   getConfigFilePath,
   ensureConfigFile
 } from './app-config'
+import {
+  getCustomThemesDir,
+  ensureCustomThemesDir,
+  listCustomThemes,
+  startWatchingCustomThemes,
+  deleteCustomTheme,
+  customThemeRevealTarget,
+  createCustomTheme,
+  resolveThemeAssetPath
+} from './custom-themes'
+import {
+  ensureSnippetsDir,
+  listSnippets,
+  startWatchingSnippets,
+  snippetRevealTarget,
+  deleteSnippet
+} from './snippets'
 import type { AppConfigPortable } from '@shared/app-config'
+import type { CustomTheme } from '@shared/custom-themes'
+import type { Snippet } from '@shared/snippets'
 import {
   listCustomTemplates,
   readCustomTemplate,
@@ -174,18 +193,19 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const LOCAL_ASSET_SCHEME = 'zen-asset'
+const THEME_ASSET_SCHEME = 'zen-theme'
+
+const PRIVILEGED_ASSET_PRIVILEGES = {
+  standard: true,
+  secure: true,
+  supportFetchAPI: true,
+  stream: true,
+  corsEnabled: true
+} as const
 
 protocol.registerSchemesAsPrivileged([
-  {
-    scheme: LOCAL_ASSET_SCHEME,
-    privileges: {
-      standard: true,
-      secure: true,
-      supportFetchAPI: true,
-      stream: true,
-      corsEnabled: true
-    }
-  }
+  { scheme: LOCAL_ASSET_SCHEME, privileges: PRIVILEGED_ASSET_PRIVILEGES },
+  { scheme: THEME_ASSET_SCHEME, privileges: PRIVILEGED_ASSET_PRIVILEGES }
 ])
 
 let mainWindow: BrowserWindow | null = null
@@ -640,6 +660,7 @@ function installNavigationGuards(win: BrowserWindow): void {
       }
       return { action: 'deny' }
     }
+    if (url.startsWith(`${THEME_ASSET_SCHEME}://`)) return { action: 'deny' }
     openAllowedExternalUrl(url)
     return { action: 'deny' }
   })
@@ -654,6 +675,7 @@ function installNavigationGuards(win: BrowserWindow): void {
       }
       return
     }
+    if (url.startsWith(`${THEME_ASSET_SCHEME}://`)) return
     openAllowedExternalUrl(url)
   })
 }
@@ -699,6 +721,16 @@ function mimeTypeForPath(absPath: string): string {
       return 'video/ogg'
     case '.webm':
       return 'video/webm'
+    case '.woff2':
+      return 'font/woff2'
+    case '.woff':
+      return 'font/woff'
+    case '.ttf':
+      return 'font/ttf'
+    case '.otf':
+      return 'font/otf'
+    case '.eot':
+      return 'application/vnd.ms-fontobject'
     default:
       return 'application/octet-stream'
   }
@@ -2749,6 +2781,22 @@ function registerIpc(): void {
     const file = await ensureConfigFile()
     shell.showItemInFolder(file)
   })
+  handle(IPC.CUSTOM_THEMES_LIST, () => listCustomThemes())
+  handle(IPC.CUSTOM_THEMES_GET_DIR, () => getCustomThemesDir())
+  handle(IPC.CUSTOM_THEMES_REVEAL, async (_event, slug?: string) => {
+    shell.showItemInFolder(await customThemeRevealTarget(slug))
+  })
+  handle(IPC.CUSTOM_THEMES_DELETE, async (_event, slug: string) => {
+    await deleteCustomTheme(slug)
+  })
+  handle(IPC.CUSTOM_THEMES_CREATE, (_event, input: { name?: string }) => createCustomTheme(input))
+  handle(IPC.SNIPPETS_LIST, () => listSnippets())
+  handle(IPC.SNIPPETS_REVEAL, async (_event, name?: string) => {
+    shell.showItemInFolder(await snippetRevealTarget(name))
+  })
+  handle(IPC.SNIPPETS_DELETE, async (_event, name: string) => {
+    await deleteSnippet(name)
+  })
 }
 
 /** Push an externally-changed config (synced dotfile / hand-edit) to every
@@ -2756,6 +2804,20 @@ function registerIpc(): void {
 function broadcastConfigChange(next: AppConfigPortable): void {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) win.webContents.send(IPC.CONFIG_ON_CHANGE, next)
+  }
+}
+
+/** Push the freshly-scanned custom themes to every renderer on a file change. */
+function broadcastCustomThemesChange(next: CustomTheme[]): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(IPC.CUSTOM_THEMES_ON_CHANGE, next)
+  }
+}
+
+/** Push the freshly-scanned snippets to every renderer on a file change. */
+function broadcastSnippetsChange(next: Snippet[]): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(IPC.SNIPPETS_ON_CHANGE, next)
   }
 }
 
@@ -3293,6 +3355,32 @@ app.whenReady().then(async () => {
     })
   })
 
+  // Theme-relative assets: url(zen-theme://<slug>/<file>) in a custom theme's
+  // CSS, served sandboxed to that theme's own folder.
+  protocol.handle(THEME_ASSET_SCHEME, async (request) => {
+    // Parse host=slug + path by hand so the slug keeps its case (new URL()
+    // would lowercase the hostname, breaking case-sensitive filesystems).
+    const without = request.url.slice(`${THEME_ASSET_SCHEME}://`.length).split(/[?#]/)[0]
+    const slashIdx = without.indexOf('/')
+    const rawSlug = slashIdx === -1 ? without : without.slice(0, slashIdx)
+    const rel = slashIdx === -1 ? '' : without.slice(slashIdx + 1)
+    let slug: string
+    try {
+      slug = decodeURIComponent(rawSlug)
+    } catch {
+      throw new Error(`Invalid theme asset URL: ${request.url}`)
+    }
+    const abs = resolveThemeAssetPath(slug, rel)
+    if (!abs) throw new Error(`Invalid theme asset URL: ${request.url}`)
+    const data = await fsp.readFile(abs)
+    return new Response(data, {
+      headers: {
+        'content-type': mimeTypeForPath(abs),
+        'cache-control': 'no-cache'
+      }
+    })
+  })
+
   // Permissions this app grants to its own renderer (deny everything else —
   // it's our app talking to our own vault, no third-party surface):
   //   - 'local-fonts'   → queryLocalFonts() for the font picker
@@ -3328,6 +3416,16 @@ app.whenReady().then(async () => {
   // Load the portable config from disk before any window opens so the
   // preload's synchronous getConfigSync() returns real data on first paint.
   await initAppConfig(broadcastConfigChange)
+
+  // Custom user themes live alongside the config dotfile. Seed the dir on first
+  // run, then watch it so edits apply live. Await the seed so the watcher
+  // attaches to a directory that already exists.
+  await ensureCustomThemesDir().catch(() => {})
+  startWatchingCustomThemes(broadcastCustomThemesChange)
+
+  // CSS snippets live in a sibling dir; same seed-then-watch dance.
+  await ensureSnippetsDir().catch(() => {})
+  startWatchingSnippets(broadcastSnippetsChange)
 
   installAppMenu()
   registerIpc()

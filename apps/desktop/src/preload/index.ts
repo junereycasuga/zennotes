@@ -12,6 +12,8 @@ import type {
 } from '@zennotes/bridge-contract/templates'
 import { IPC } from '@shared/ipc'
 import type { AppConfigPortable } from '@shared/app-config'
+import type { CustomTheme } from '@shared/custom-themes'
+import type { Snippet } from '@shared/snippets'
 import type {
   AppUpdateState,
   AssetMeta,
@@ -505,6 +507,31 @@ const api: ZenBridge = {
     const listener = (_: unknown, next: AppConfigPortable): void => cb(next)
     ipcRenderer.on(IPC.CONFIG_ON_CHANGE, listener)
     return () => ipcRenderer.removeListener(IPC.CONFIG_ON_CHANGE, listener)
+  },
+
+  listCustomThemes: (): Promise<CustomTheme[]> => ipcRenderer.invoke(IPC.CUSTOM_THEMES_LIST),
+  getCustomThemesDir: (): Promise<string | null> =>
+    ipcRenderer.invoke(IPC.CUSTOM_THEMES_GET_DIR),
+  revealCustomThemesDir: (slug?: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.CUSTOM_THEMES_REVEAL, slug),
+  deleteCustomTheme: (slug: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.CUSTOM_THEMES_DELETE, slug),
+  createCustomTheme: (input: { name?: string }): Promise<string | null> =>
+    ipcRenderer.invoke(IPC.CUSTOM_THEMES_CREATE, input),
+  onCustomThemesChange: (cb: (next: CustomTheme[]) => void): (() => void) => {
+    const listener = (_: unknown, next: CustomTheme[]): void => cb(next)
+    ipcRenderer.on(IPC.CUSTOM_THEMES_ON_CHANGE, listener)
+    return () => ipcRenderer.removeListener(IPC.CUSTOM_THEMES_ON_CHANGE, listener)
+  },
+
+  listSnippets: (): Promise<Snippet[]> => ipcRenderer.invoke(IPC.SNIPPETS_LIST),
+  revealSnippetsDir: (name?: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.SNIPPETS_REVEAL, name),
+  deleteSnippet: (name: string): Promise<void> => ipcRenderer.invoke(IPC.SNIPPETS_DELETE, name),
+  onSnippetsChange: (cb: (next: Snippet[]) => void): (() => void) => {
+    const listener = (_: unknown, next: Snippet[]): void => cb(next)
+    ipcRenderer.on(IPC.SNIPPETS_ON_CHANGE, listener)
+    return () => ipcRenderer.removeListener(IPC.SNIPPETS_ON_CHANGE, listener)
   }
 }
 
