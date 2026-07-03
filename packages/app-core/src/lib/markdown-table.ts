@@ -111,7 +111,7 @@ function unescapeCell(text: string): string {
 }
 
 function escapeCell(text: string): string {
-  return text.replace(/([|\\])/g, '\\$1')
+  return text.replace(/\|/g, '\\|')
 }
 
 function parseAlign(spec: string): ColumnAlign {
