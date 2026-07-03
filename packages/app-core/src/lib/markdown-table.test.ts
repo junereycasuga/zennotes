@@ -103,6 +103,14 @@ describe('serializeTable round-trip', () => {
     expect(parse(out).rows[0][0]).toBe('\\sum | x')
   })
 
+  it('preserves LaTeX line breaks (double backslash) on round-trip', () => {
+    // A matrix/aligned line break `\\` must not collapse to `\` when parsed back.
+    const t = setCell(parse(SIMPLE), { row: 0, col: 0 }, 'a \\\\ b')
+    const out = serializeTable(t)
+    expect(out).toContain('a \\\\ b')
+    expect(parse(out).rows[0][0]).toBe('a \\\\ b')
+  })
+
   it('produces aligned, padded markdown', () => {
     const t = parse(SIMPLE)
     expect(serializeTable(t)).toBe(`| A   | B   |
