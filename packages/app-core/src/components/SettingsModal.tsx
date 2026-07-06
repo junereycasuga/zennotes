@@ -487,6 +487,8 @@ export function SettingsModal(): JSX.Element {
   const setEditorFontSize = useStore((s) => s.setEditorFontSize)
   const editorLineHeight = useStore((s) => s.editorLineHeight)
   const setEditorLineHeight = useStore((s) => s.setEditorLineHeight)
+  const editorScrollOff = useStore((s) => s.editorScrollOff)
+  const setEditorScrollOff = useStore((s) => s.setEditorScrollOff)
   const previewMaxWidth = useStore((s) => s.previewMaxWidth)
   const setPreviewMaxWidth = useStore((s) => s.setPreviewMaxWidth)
   const lineNumberMode = useStore((s) => s.lineNumberMode)
@@ -1900,6 +1902,12 @@ export function SettingsModal(): JSX.Element {
           keywords: ['spacing']
         },
         {
+          id: 'scroll-off',
+          title: 'Scroll offset',
+          description: 'Vim scrolloff — lines kept above and below the cursor.',
+          keywords: ['scroll', 'scrolloff', 'vim', 'cursor', 'margin']
+        },
+        {
           id: 'reading-width',
           title: 'Reading width',
           description: 'Maximum width for preview and split-preview content.',
@@ -1987,6 +1995,17 @@ export function SettingsModal(): JSX.Element {
               settingId="line-height"
               onChange={setEditorLineHeight}
               format={(v) => v.toFixed(2)}
+            />
+            <SliderRow
+              label="Scroll offset"
+              description="Vim scrolloff — lines kept above and below the cursor while scrolling. 0 disables it."
+              value={editorScrollOff}
+              min={0}
+              max={20}
+              step={1}
+              unit=" lines"
+              settingId="scroll-off"
+              onChange={setEditorScrollOff}
             />
             <SliderRow
               label="Reading width"

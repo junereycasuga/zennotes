@@ -380,6 +380,7 @@ interface Prefs {
   themeMode: ThemeMode
   editorFontSize: number    // px — affects editor + preview
   editorLineHeight: number  // unitless multiplier
+  editorScrollOff: number   // vim scrolloff — lines kept above/below the cursor (0 = off)
   previewMaxWidth: number   // px — max reading width for preview surfaces
   lineNumberMode: LineNumberMode
   lineNumberPosition: LineNumberPosition
@@ -603,6 +604,7 @@ export const DEFAULT_PREFS: Prefs = {
   themeTweaks: {},
   editorFontSize: 16,
   editorLineHeight: 1.7,
+  editorScrollOff: 0,
   previewMaxWidth: 920,
   lineNumberMode: 'off',
   lineNumberPosition: 'text',
@@ -729,6 +731,10 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
       typeof p.editorLineHeight === 'number'
         ? p.editorLineHeight
         : DEFAULT_PREFS.editorLineHeight,
+    editorScrollOff:
+      typeof p.editorScrollOff === 'number' && p.editorScrollOff >= 0
+        ? Math.floor(p.editorScrollOff)
+        : DEFAULT_PREFS.editorScrollOff,
     previewMaxWidth:
       typeof p.previewMaxWidth === 'number'
         ? Math.min(1600, Math.max(640, p.previewMaxWidth))
@@ -1457,6 +1463,7 @@ function collectPrefs(s: {
   themeMode: ThemeMode
   editorFontSize: number
   editorLineHeight: number
+  editorScrollOff: number
   previewMaxWidth: number
   lineNumberMode: LineNumberMode
   lineNumberPosition: LineNumberPosition
@@ -1522,6 +1529,7 @@ function collectPrefs(s: {
     themeMode: s.themeMode,
     editorFontSize: s.editorFontSize,
     editorLineHeight: s.editorLineHeight,
+    editorScrollOff: s.editorScrollOff,
     previewMaxWidth: s.previewMaxWidth,
     lineNumberMode: s.lineNumberMode,
     viewSettingsScope: s.viewSettingsScope,
@@ -1949,6 +1957,7 @@ interface Store {
   themeMode: ThemeMode
   editorFontSize: number
   editorLineHeight: number
+  editorScrollOff: number
   previewMaxWidth: number
   lineNumberMode: LineNumberMode
   lineNumberPosition: LineNumberPosition
@@ -2288,6 +2297,7 @@ interface Store {
   setTheme: (next: { id: string; family: ThemeFamily; mode: ThemeMode }) => void
   setEditorFontSize: (px: number) => void
   setEditorLineHeight: (mult: number) => void
+  setEditorScrollOff: (lines: number) => void
   setPreviewMaxWidth: (px: number) => void
   setLineNumberMode: (mode: LineNumberMode) => void
   setViewSettingsScope: (scope: 'global' | 'vault') => void
@@ -3396,6 +3406,7 @@ export const useStore = create<Store>((set, get) => {
   themeMode: loadPrefs().themeMode,
   editorFontSize: loadPrefs().editorFontSize,
   editorLineHeight: loadPrefs().editorLineHeight,
+  editorScrollOff: loadPrefs().editorScrollOff,
   previewMaxWidth: loadPrefs().previewMaxWidth,
   lineNumberMode: loadPrefs().lineNumberMode,
   viewSettingsScope: loadPrefs().viewSettingsScope,
@@ -5193,6 +5204,10 @@ export const useStore = create<Store>((set, get) => {
   },
   setEditorLineHeight: (mult) => {
     set({ editorLineHeight: mult })
+    savePrefs(collectPrefs(get()))
+  },
+  setEditorScrollOff: (lines) => {
+    set({ editorScrollOff: Math.max(0, Math.floor(lines)) })
     savePrefs(collectPrefs(get()))
   },
   setPreviewMaxWidth: (px) => {

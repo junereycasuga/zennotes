@@ -119,6 +119,11 @@ const SCALAR_FIELDS: Partial<Record<PortablePrefKey, ScalarFieldMap>> = {
     comment: 'editor + preview font size (px)'
   },
   editorLineHeight: { section: 'editor', tomlKey: 'line_height', comment: 'line-height multiplier' },
+  editorScrollOff: {
+    section: 'editor',
+    tomlKey: 'scroll_off',
+    comment: 'vim scrolloff — lines kept above/below the cursor (0 = off)'
+  },
   previewMaxWidth: {
     section: 'editor',
     tomlKey: 'preview_max_width',
