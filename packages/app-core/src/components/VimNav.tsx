@@ -357,6 +357,13 @@ export function VimNav(): JSX.Element | null {
       ) {
         return
       }
+      // A WYSIWYG table cell in INSERT mode (contenteditable) is a real text
+      // field, even though it lives inside CodeMirror. Its keys — including
+      // Space — must type into the cell, not arm the leader or fire global
+      // bindings; the cell's own handler owns Esc and the insert-escape. (#340)
+      if (target?.closest('.cm-table-cell')?.getAttribute('contenteditable') === 'true') {
+        return
+      }
       // CodeMirror's editor surface is contenteditable; keep global
       // hint/navigation bindings working there. Only skip other
       // unrelated contenteditable widgets.
