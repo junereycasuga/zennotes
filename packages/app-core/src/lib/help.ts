@@ -507,6 +507,11 @@ export const HELP_VIM_COMMANDS: HelpExCommand[] = [
     detail: 'Writes the current note, then closes it. On virtual views like Tasks, Tags, Help, or Trash it just closes.'
   },
   {
+    command: ':saveas name / :sav name',
+    summary: 'Save the note under a new name',
+    detail: 'Like Vim: writes a copy of the current note under the given title and keeps the original, then switches to editing the copy.'
+  },
+  {
     command: ':format',
     summary: 'Format markdown',
     detail: 'Runs markdown formatting on the active note.'
