@@ -53,6 +53,7 @@ import {
   takeTaskLineAtIndex,
   setTaskCheckedAtIndex,
   setTaskDueAtIndex,
+  setTaskForwardedAtIndex,
   setTaskPriorityAtIndex,
   setTaskTextAtIndex,
   setTaskWaitingAtIndex,
@@ -78,7 +79,9 @@ import { normalizeKeymapOverrides } from './lib/keymaps'
 import {
   PORTABLE_PREF_KEYS,
   pickPortablePrefs,
-  type AppConfigPortable
+  defaultTimeFormat,
+  type AppConfigPortable,
+  type TimeFormat
 } from '@shared/app-config'
 import {
   type LabelKey,
@@ -99,6 +102,7 @@ import {
   folderForVaultRelativePath,
   findDailyNoteForDate,
   findWeeklyNoteForDate,
+  findMonthlyNoteForDate,
   noteTitleForDate,
   isPrimaryNotesAtRoot,
   removeFavoritesForFolder,
@@ -110,6 +114,7 @@ import {
   rewriteFavoritesForFolderRename,
   toggleFavorite as toggleFavoriteKey,
   weeklyNoteLocationForDate,
+  monthlyNoteLocationForDate,
   rewriteFolderColorsForRename,
   rewriteFolderIconsForRename
 } from './lib/vault-layout'
@@ -150,6 +155,7 @@ import {
   type PaneLayout,
   type PaneLeaf
 } from './lib/pane-layout'
+import { paneModesWithPathMode, type PaneMode, type PaneModesByPath } from './lib/pane-mode'
 
 export type NoteSortOrder =
   | 'none'
@@ -379,6 +385,8 @@ interface Prefs {
   themeMode: ThemeMode
   editorFontSize: number    // px — affects editor + preview
   editorLineHeight: number  // unitless multiplier
+  editorScrollOff: number   // vim scrolloff — lines kept above/below the cursor (0 = off)
+  timeFormat: TimeFormat    // clock format for the @time macro
   previewMaxWidth: number   // px — max reading width for preview surfaces
   lineNumberMode: LineNumberMode
   lineNumberPosition: LineNumberPosition
@@ -602,6 +610,8 @@ export const DEFAULT_PREFS: Prefs = {
   themeTweaks: {},
   editorFontSize: 16,
   editorLineHeight: 1.7,
+  editorScrollOff: 0,
+  timeFormat: defaultTimeFormat(),
   previewMaxWidth: 920,
   lineNumberMode: 'off',
   lineNumberPosition: 'text',
@@ -728,6 +738,14 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
       typeof p.editorLineHeight === 'number'
         ? p.editorLineHeight
         : DEFAULT_PREFS.editorLineHeight,
+    editorScrollOff:
+      typeof p.editorScrollOff === 'number' && p.editorScrollOff >= 0
+        ? Math.floor(p.editorScrollOff)
+        : DEFAULT_PREFS.editorScrollOff,
+    timeFormat:
+      p.timeFormat === '12h' || p.timeFormat === '24h'
+        ? p.timeFormat
+        : DEFAULT_PREFS.timeFormat,
     previewMaxWidth:
       typeof p.previewMaxWidth === 'number'
         ? Math.min(1600, Math.max(640, p.previewMaxWidth))
@@ -1456,6 +1474,8 @@ function collectPrefs(s: {
   themeMode: ThemeMode
   editorFontSize: number
   editorLineHeight: number
+  editorScrollOff: number
+  timeFormat: TimeFormat
   previewMaxWidth: number
   lineNumberMode: LineNumberMode
   lineNumberPosition: LineNumberPosition
@@ -1521,6 +1541,8 @@ function collectPrefs(s: {
     themeMode: s.themeMode,
     editorFontSize: s.editorFontSize,
     editorLineHeight: s.editorLineHeight,
+    editorScrollOff: s.editorScrollOff,
+    timeFormat: s.timeFormat,
     previewMaxWidth: s.previewMaxWidth,
     lineNumberMode: s.lineNumberMode,
     viewSettingsScope: s.viewSettingsScope,
@@ -1948,6 +1970,8 @@ interface Store {
   themeMode: ThemeMode
   editorFontSize: number
   editorLineHeight: number
+  editorScrollOff: number
+  timeFormat: TimeFormat
   previewMaxWidth: number
   lineNumberMode: LineNumberMode
   lineNumberPosition: LineNumberPosition
@@ -2079,6 +2103,10 @@ interface Store {
    *  persisted). Kept in the store — not Sidebar-local — so the keyboard nav in
    *  VimNav can expand/collapse date groups like real folders. (#301) */
   dateNavExpanded: string[]
+  /** Editor view mode (edit/split/preview) per pane, per note path. Ephemeral
+   *  (not persisted): kept in the store so it survives EditorPane remounts and a
+   *  split can inherit the source pane's mode instead of resetting to edit. (#321) */
+  paneModes: Record<string, PaneModesByPath>
   noteListCursorIndex: number
   connectionsCursorIndex: number
   connectionPreview: ConnectionPreviewState | null
@@ -2188,6 +2216,10 @@ interface Store {
    *  removing it from its current note. Falls back to setting the due date
    *  when daily notes are disabled or it already lives in that day's note. */
   moveTaskToDate: (task: VaultTask, dateIso: string) => Promise<void>
+  /** Forward a task to another note (#316): leaves `[>]` + a link to the target
+   *  on the original, and appends a fresh `- [ ]` copy (backlinked) to the
+   *  target note. */
+  forwardTask: (task: VaultTask, targetPath: string) => Promise<void>
   setTasksFilter: (q: string) => void
   setTasksViewMode: (mode: TasksViewMode) => void
   setKanbanGroupBy: (group: KanbanGroupBy) => void
@@ -2283,6 +2315,8 @@ interface Store {
   setTheme: (next: { id: string; family: ThemeFamily; mode: ThemeMode }) => void
   setEditorFontSize: (px: number) => void
   setEditorLineHeight: (mult: number) => void
+  setEditorScrollOff: (lines: number) => void
+  setTimeFormat: (format: TimeFormat) => void
   setPreviewMaxWidth: (px: number) => void
   setLineNumberMode: (mode: LineNumberMode) => void
   setViewSettingsScope: (scope: 'global' | 'vault') => void
@@ -2340,6 +2374,7 @@ interface Store {
   setQuickNoteTitlePrefix: (prefix: string | null) => void
   openTodayDailyNote: () => Promise<void>
   openThisWeekWeeklyNote: () => Promise<void>
+  openThisMonthMonthlyNote: () => Promise<void>
   setTemplatePaletteOpen: (open: boolean) => void
   /** Open the template picker scoped to a folder; the chosen template is
    *  created there directly (no destination prompt). */
@@ -2366,6 +2401,7 @@ interface Store {
     opts?: { folder?: NoteFolder; subpath?: string; title?: string; date?: Date }
   ) => Promise<void>
   saveActiveNoteAsTemplate: () => Promise<void>
+  saveActiveNoteAs: (newName: string) => Promise<void>
   setWordWrap: (on: boolean) => void
   setPreviewSmoothScroll: (on: boolean) => void
   setEditorMaxWidth: (px: number) => void
@@ -2377,6 +2413,7 @@ interface Store {
   setCalendarShowWeekNumbers: (show: boolean) => void
   openDailyNoteForDate: (date: Date) => Promise<void>
   openWeeklyNoteForDate: (date: Date) => Promise<void>
+  openMonthlyNoteForDate: (date: Date) => Promise<void>
   /** Find the daily note for `date`, creating it on disk (template-aware)
    *  WITHOUT navigating to it. Returns its meta, or null if daily notes are
    *  disabled or creation failed. */
@@ -2436,6 +2473,7 @@ interface Store {
   }) => Promise<void>
   /** Update sizes on a split node (for divider drag). */
   resizeSplit: (splitId: string, sizes: number[]) => void
+  setPaneModeForPath: (paneId: string, path: string | null, mode: PaneMode) => void
   /** Pin a tab within a specific pane — sticks it to the left of the
    *  strip and protects it from "Close Others" / "Close Tabs to Right". */
   pinTabInPane: (paneId: string, path: string) => void
@@ -2758,6 +2796,14 @@ function currentWeeklyPatternFromSettings(settings: VaultSettings): DateNotePatt
   }
 }
 
+function currentMonthlyPatternFromSettings(settings: VaultSettings): DateNotePatternSettings {
+  return {
+    directory: settings.monthlyNotes.directory,
+    titlePattern: settings.monthlyNotes.titlePattern,
+    locale: settings.monthlyNotes.locale
+  }
+}
+
 function appendDateNotePatternHistory(
   history: readonly DateNotePatternSettings[] | undefined,
   previous: DateNotePatternSettings,
@@ -2785,6 +2831,8 @@ function withDateNotePatternHistory(
   const nextDaily = currentDailyPatternFromSettings(next)
   const previousWeekly = currentWeeklyPatternFromSettings(previous)
   const nextWeekly = currentWeeklyPatternFromSettings(next)
+  const previousMonthly = currentMonthlyPatternFromSettings(previous)
+  const nextMonthly = currentMonthlyPatternFromSettings(next)
 
   return {
     ...next,
@@ -2813,6 +2861,19 @@ function withDateNotePatternHistory(
               nextWeekly
             )
           : next.weeklyNotes.legacyPatterns
+    },
+    monthlyNotes: {
+      ...next.monthlyNotes,
+      legacyPatterns:
+        previous.monthlyNotes.enabled &&
+        next.monthlyNotes.enabled &&
+        dateNotePatternKey(previousMonthly) !== dateNotePatternKey(nextMonthly)
+          ? appendDateNotePatternHistory(
+              next.monthlyNotes.legacyPatterns,
+              previousMonthly,
+              nextMonthly
+            )
+          : next.monthlyNotes.legacyPatterns
     }
   }
 }
@@ -3390,6 +3451,8 @@ export const useStore = create<Store>((set, get) => {
   themeMode: loadPrefs().themeMode,
   editorFontSize: loadPrefs().editorFontSize,
   editorLineHeight: loadPrefs().editorLineHeight,
+  editorScrollOff: loadPrefs().editorScrollOff,
+  timeFormat: loadPrefs().timeFormat,
   previewMaxWidth: loadPrefs().previewMaxWidth,
   lineNumberMode: loadPrefs().lineNumberMode,
   viewSettingsScope: loadPrefs().viewSettingsScope,
@@ -3445,6 +3508,7 @@ export const useStore = create<Store>((set, get) => {
   focusedPanel: null,
   sidebarCursorIndex: 0,
   dateNavExpanded: [],
+  paneModes: {},
   noteListCursorIndex: 0,
   connectionsCursorIndex: 0,
   connectionPreview: null,
@@ -4133,6 +4197,76 @@ export const useStore = create<Store>((set, get) => {
       vaultTasks: [
         ...s.vaultTasks.filter(
           (t) => t.sourcePath !== task.sourcePath && t.sourcePath !== target.path
+        ),
+        ...srcTasks,
+        ...tgtTasks
+      ]
+    }))
+  },
+
+  forwardTask: async (task, targetPath) => {
+    if (!targetPath || targetPath === task.sourcePath) return
+    const targetMeta = get().notes.find((n) => n.path === targetPath)
+    if (!targetMeta) return
+
+    const srcBuffer = get().noteContents[task.sourcePath]
+    const tgtBuffer = get().noteContents[targetPath]
+    let srcBody: string
+    let tgtBody: string
+    try {
+      srcBody = srcBuffer?.body ?? (await window.zen.readNote(task.sourcePath)).body
+      tgtBody = tgtBuffer?.body ?? (await window.zen.readNote(targetPath)).body
+    } catch (err) {
+      console.error('forwardTask read failed', err)
+      return
+    }
+
+    // Cross-links are title-based wikilinks (navigable + resolver-friendly).
+    const backLink = `[[${task.noteTitle}]]`
+    const forwardLink = `[[${targetMeta.title}]]`
+
+    // Original: flip to `[>]` and record where it went.
+    const nextSrc = setTaskForwardedAtIndex(srcBody, task.taskIndex, forwardLink)
+    if (nextSrc === srcBody) return
+
+    // Copy: a fresh open task in the target, backlinked to the origin.
+    const copyLine = `- [ ] ${task.content} ${backLink}`.replace(/\s+$/u, '')
+    const trimmed = tgtBody.replace(/\s+$/u, '')
+    const nextTgt = trimmed.length ? `${trimmed}\n${copyLine}\n` : `${copyLine}\n`
+
+    if (srcBuffer) get().updateNoteBody(task.sourcePath, nextSrc)
+    else {
+      try {
+        await window.zen.writeNote(task.sourcePath, nextSrc)
+      } catch (err) {
+        console.error('forwardTask write source failed', err)
+        return
+      }
+    }
+    if (tgtBuffer) get().updateNoteBody(targetPath, nextTgt)
+    else {
+      try {
+        await window.zen.writeNote(targetPath, nextTgt)
+      } catch (err) {
+        console.error('forwardTask write target failed', err)
+        return
+      }
+    }
+
+    const srcTasks = parseTasksFromBody(nextSrc, {
+      path: task.sourcePath,
+      title: task.noteTitle,
+      folder: task.noteFolder
+    })
+    const tgtTasks = parseTasksFromBody(nextTgt, {
+      path: targetPath,
+      title: targetMeta.title,
+      folder: targetMeta.folder
+    })
+    set((s) => ({
+      vaultTasks: [
+        ...s.vaultTasks.filter(
+          (t) => t.sourcePath !== task.sourcePath && t.sourcePath !== targetPath
         ),
         ...srcTasks,
         ...tgtTasks
@@ -5188,6 +5322,14 @@ export const useStore = create<Store>((set, get) => {
     set({ editorLineHeight: mult })
     savePrefs(collectPrefs(get()))
   },
+  setEditorScrollOff: (lines) => {
+    set({ editorScrollOff: Math.max(0, Math.floor(lines)) })
+    savePrefs(collectPrefs(get()))
+  },
+  setTimeFormat: (format) => {
+    set({ timeFormat: format })
+    savePrefs(collectPrefs(get()))
+  },
   setPreviewMaxWidth: (px) => {
     const clamped = Math.min(1600, Math.max(640, Math.round(px)))
     set({ previewMaxWidth: clamped })
@@ -5692,6 +5834,29 @@ export const useStore = create<Store>((set, get) => {
     await get().openWeeklyNoteForDate(new Date())
   },
 
+  openMonthlyNoteForDate: async (date) => {
+    const state = get()
+    const settings = normalizeVaultSettings(state.vaultSettings)
+    if (!settings.monthlyNotes.enabled) return
+    const { title, subpath } = monthlyNoteLocationForDate(date, settings)
+    const existing = findMonthlyNoteForDate(state.notes, settings, date)
+    if (existing) {
+      set({ view: { kind: 'folder', folder: 'inbox', subpath } })
+      await get().selectNote(existing.path)
+      return
+    }
+    const template = resolveTemplate(state.customTemplates, settings.monthlyNotes.templateId)
+    if (template) {
+      await get().createFromTemplate(template, { folder: 'inbox', subpath, title, date })
+      return
+    }
+    await get().createAndOpen('inbox', subpath, { title })
+  },
+
+  openThisMonthMonthlyNote: async () => {
+    await get().openMonthlyNoteForDate(new Date())
+  },
+
   setTemplatePaletteOpen: (open) =>
     set({ templatePaletteOpen: open, templatePaletteTarget: null, templatePaletteMode: 'create' }),
 
@@ -5821,6 +5986,36 @@ export const useStore = create<Store>((set, get) => {
     if (!trimmed) return
     const raw = composeTemplateFile({ name: trimmed, category: 'Custom', body: active.body })
     await get().saveCustomTemplate({ slug: slugifyTemplateName(trimmed), raw })
+  },
+
+  saveActiveNoteAs: async (newName: string) => {
+    const active = get().activeNote
+    const notePath = active?.path
+    if (!active || !notePath) return
+    // Strip a user-supplied extension so the name stays title-based; the backend
+    // appends the note's real file extension.
+    const trimmedName = newName.trim().replace(/\.md$/i, '')
+    if (!trimmedName || trimmedName === active.title) return
+    if (
+      typeof window.zen.duplicateNote !== 'function' ||
+      typeof window.zen.renameNote !== 'function'
+    ) {
+      return
+    }
+    try {
+      // Vim's :saveas writes the note under a new name and keeps the original.
+      // Save the current note, duplicate it (a copy in the same folder), rename
+      // the copy to the requested name, and open it — the original is untouched.
+      await get().persistNote(notePath)
+      const copy = await window.zen.duplicateNote(notePath)
+      const renamed = await window.zen.renameNote(copy.path, trimmedName)
+      await get().refreshNotes()
+      await get().selectNote(renamed.path)
+      get().setFocusedPanel('editor')
+      requestAnimationFrame(() => get().editorViewRef?.focus())
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err))
+    }
   },
 
   setWordWrap: (on) => {
@@ -6288,10 +6483,24 @@ export const useStore = create<Store>((set, get) => {
         activePaneId: newLeaf.id,
         noteContents: nextContents,
         noteDirty: nextDirty,
+        // Inherit the source pane's view mode so splitting a preview pane opens
+        // the new pane in preview too, not a reset-to-edit. (#321)
+        paneModes: {
+          ...cur.paneModes,
+          [newLeaf.id]: cur.paneModes[sourcePaneId ?? targetPaneId] ?? {}
+        },
         ...activeFieldsFrom(layout, newLeaf.id, nextContents, nextDirty)
       }
     })
   },
+
+  setPaneModeForPath: (paneId, path, mode) =>
+    set((s) => ({
+      paneModes: {
+        ...s.paneModes,
+        [paneId]: paneModesWithPathMode(s.paneModes[paneId] ?? {}, path, mode)
+      }
+    })),
 
   resizeSplit: (splitId, sizes) => {
     set((s) => {

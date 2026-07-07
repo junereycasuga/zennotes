@@ -39,6 +39,9 @@ export interface VaultTask {
   /** Display content (checkbox prefix + metadata tokens stripped). */
   content: string
   checked: boolean
+  /** True for a `[>]` task forwarded to another note (#316). Mutually
+   *  exclusive with `checked`; kept out of the today/upcoming/done buckets. */
+  forwarded: boolean
   /** ISO YYYY-MM-DD, validated via Date round-trip. */
   due?: string
   /** True when `due` was *derived* from the containing daily note's date
@@ -57,6 +60,7 @@ export interface VaultTaskGroups {
   upcoming: VaultTask[]
   waiting: VaultTask[]
   done: VaultTask[]
+  forwarded: VaultTask[]
   overdueCount: number
 }
 
@@ -135,8 +139,10 @@ function parseNoteDefaults(body: string): { defaults: NoteDefaults; fmEndOffset:
 // Inline token extraction
 // ---------------------------------------------------------------------------
 
-// Word-boundary anchored so `due:` inside a URL-ish blob won't match.
-const INLINE_DUE_RE = /(?:^|\s)due:(\S+)/i
+// Word-boundary anchored so `due:` inside a URL-ish blob won't match. Optional
+// whitespace after the colon so a `due: 2026-01-01` written (or inserted by the
+// @-date completion) with a space parses the same as `due:2026-01-01`. (#343)
+const INLINE_DUE_RE = /(?:^|\s)due:\s*(\S+)/i
 const INLINE_PRIORITY_RE = /(?:^|\s)!(high|med|medium|low|h|m|l)\b/i
 const INLINE_WAITING_RE = /(?:^|\s)@waiting\b/i
 // Match #tag-like tokens but only when preceded by start-of-string/whitespace.
@@ -241,6 +247,7 @@ export function parseTasksFromBody(body: string, ctx: ParseTasksContext): VaultT
     const checkedChar = taskMatch[2]
     const tail = taskMatch[3].replace(/^\]/, '') // drop the closing `]` of the checkbox
     const checked = checkedChar === 'x' || checkedChar === 'X'
+    const forwarded = checkedChar === '>'
 
     const tokens = extractTokens(tail)
 
@@ -254,6 +261,7 @@ export function parseTasksFromBody(body: string, ctx: ParseTasksContext): VaultT
       rawText: line,
       content: tokens.stripped || tail.trim(),
       checked,
+      forwarded,
       due: tokens.due ?? defaults.due,
       priority: tokens.priority ?? defaults.priority,
       waiting: tokens.waiting,
@@ -286,9 +294,14 @@ export function groupTasks(tasks: VaultTask[], today: Date): VaultTaskGroups {
   const upcoming: VaultTask[] = []
   const waiting: VaultTask[] = []
   const done: VaultTask[] = []
+  const forwarded: VaultTask[] = []
   let overdueCount = 0
 
   for (const task of tasks) {
+    if (task.forwarded) {
+      forwarded.push(task)
+      continue
+    }
     if (task.checked) {
       done.push(task)
       continue
@@ -336,8 +349,9 @@ export function groupTasks(tasks: VaultTask[], today: Date): VaultTaskGroups {
     if (a.sourcePath !== b.sourcePath) return a.sourcePath < b.sourcePath ? -1 : 1
     return a.taskIndex - b.taskIndex
   })
+  forwarded.sort(byDueThenPath)
 
-  return { today: today_, upcoming, waiting, done, overdueCount }
+  return { today: today_, upcoming, waiting, done, forwarded, overdueCount }
 }
 
 /** Helper for UIs that need to know whether a task is overdue relative to now. */

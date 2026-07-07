@@ -4,7 +4,10 @@
 // to round-trip a toggle — see `src/shared/tasks.ts`.
 
 export const FENCE_RE = /^(\s*)(```|~~~)/
-export const TASK_LINE_RE = /^(\s*(?:>\s*)*(?:[-+*]|\d+[.)])\s+\[)( |x|X)(\].*)$/
+// Group 2 is the checkbox state char: space (open), x/X (done), or `>` (forwarded
+// to another note, #316). The leading `(?:>\s*)*` is a blockquote prefix — a
+// different `>`, unrelated to the state char inside the brackets.
+export const TASK_LINE_RE = /^(\s*(?:>\s*)*(?:[-+*]|\d+[.)])\s+\[)( |x|X|>)(\].*)$/
 
 export type TaskPriority = 'high' | 'med' | 'low'
 
@@ -164,7 +167,9 @@ export function setTaskWaitingAtIndex(
 }
 
 const PRIORITY_TOKEN_RE = /(^|\s)!(?:high|med|medium|low|h|m|l)\b/i
-const DUE_TOKEN_RE = /(^|\s)due:\S+/i
+// Optional whitespace after the colon so a spaced `due: 2026-01-01` token is
+// stripped/replaced as one unit when rescheduling, matching the parser. (#343)
+const DUE_TOKEN_RE = /(^|\s)due:\s*\S+/i
 
 /** Replace, insert, or remove the priority token (`!high|!med|!low`)
  *  on the task line at `taskIndex`. Pass `null` to clear. */
@@ -232,6 +237,24 @@ export function setTaskTextAtIndex(
     if (!tailWithBracket.startsWith(']')) return null
     const trimmed = text.trim()
     return `${prefix}${checkChar}]${trimmed ? ` ${trimmed}` : ''}`
+  })
+}
+
+/** Mark the task line at `taskIndex` as forwarded (`[>]`) and append `linkToken`
+ *  (a wikilink to the note it was forwarded to) if not already present. Used by
+ *  task forwarding (#316). Pass `linkToken = ''` to only flip the state. */
+export function setTaskForwardedAtIndex(
+  markdown: string,
+  taskIndex: number,
+  linkToken: string
+): string {
+  return editTaskAtIndex(markdown, taskIndex, (match) => {
+    const prefix = match[1]
+    const tailWithBracket = match[3]
+    if (!tailWithBracket.startsWith(']')) return null
+    const tail = tailWithBracket.slice(1).replace(/\s+$/u, '')
+    const nextTail = !linkToken || tail.includes(linkToken) ? tail : `${tail} ${linkToken}`
+    return `${prefix}>]${nextTail}`
   })
 }
 

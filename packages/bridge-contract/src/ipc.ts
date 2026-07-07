@@ -59,6 +59,9 @@ export const IPC = {
   VAULT_DUPLICATE_ASSET: 'vault:duplicate-asset',
   VAULT_DELETE_ASSET: 'vault:delete-asset',
   VAULT_RESTORE_DELETED_ASSET: 'vault:restore-deleted-asset',
+  VAULT_LIST_DELETED_ASSETS: 'vault:list-deleted-assets',
+  VAULT_PURGE_DELETED_ASSET: 'vault:purge-deleted-asset',
+  VAULT_EMPTY_DELETED_ASSETS: 'vault:empty-deleted-assets',
   VAULT_CREATE_FOLDER: 'vault:create-folder',
   VAULT_RENAME_FOLDER: 'vault:rename-folder',
   VAULT_DELETE_FOLDER: 'vault:delete-folder',
@@ -329,6 +332,20 @@ export interface WeeklyNotesSettings {
   templateId?: string
 }
 
+export interface MonthlyNotesSettings {
+  enabled: boolean
+  /** Directory or date-based directory pattern inside the primary notes area. */
+  directory: string
+  /** Date-based title/filename pattern for new monthly notes. */
+  titlePattern?: string
+  /** BCP 47 locale used for localized pattern tokens. `system` = OS/browser locale. */
+  locale?: string
+  /** Prior patterns used only to recognize existing monthly notes after settings changes. */
+  legacyPatterns?: DateNotePatternSettings[]
+  /** Template applied to new monthly notes. Empty/undefined = blank note. */
+  templateId?: string
+}
+
 /**
  * Per-vault overrides for "how this vault looks" — sort order, grouping, the
  * tasks view, etc. Each key falls back to the matching global preference
@@ -352,6 +369,7 @@ export interface VaultSettings {
   primaryNotesLocation: PrimaryNotesLocation
   dailyNotes: DailyNotesSettings
   weeklyNotes: WeeklyNotesSettings
+  monthlyNotes: MonthlyNotesSettings
   /** Per-vault view overrides (#292); absent/empty means "inherit global". */
   view?: VaultViewSettings
   folderIcons: Record<string, FolderIconId>
@@ -373,6 +391,9 @@ export const DEFAULT_DAILY_NOTE_LOCALE = 'system'
 export const DEFAULT_WEEKLY_NOTES_DIRECTORY = 'Weekly Notes'
 export const DEFAULT_WEEKLY_NOTE_TITLE_PATTERN = "yyyy-'W'ww"
 export const DEFAULT_WEEKLY_NOTE_LOCALE = 'system'
+export const DEFAULT_MONTHLY_NOTES_DIRECTORY = 'Monthly Notes'
+export const DEFAULT_MONTHLY_NOTE_TITLE_PATTERN = 'yyyy-MM'
+export const DEFAULT_MONTHLY_NOTE_LOCALE = 'system'
 
 export const DEFAULT_VAULT_SETTINGS: VaultSettings = {
   primaryNotesLocation: 'inbox',
@@ -389,6 +410,12 @@ export const DEFAULT_VAULT_SETTINGS: VaultSettings = {
     directory: DEFAULT_WEEKLY_NOTES_DIRECTORY,
     titlePattern: DEFAULT_WEEKLY_NOTE_TITLE_PATTERN,
     locale: DEFAULT_WEEKLY_NOTE_LOCALE
+  },
+  monthlyNotes: {
+    enabled: false,
+    directory: DEFAULT_MONTHLY_NOTES_DIRECTORY,
+    titlePattern: DEFAULT_MONTHLY_NOTE_TITLE_PATTERN,
+    locale: DEFAULT_MONTHLY_NOTE_LOCALE
   },
   folderIcons: {},
   folderColors: {},
@@ -523,6 +550,8 @@ export interface DeletedAsset {
   name: string
   /** Opaque restore token returned by the desktop bridge. */
   undoToken: string
+  /** ISO timestamp of when the asset was deleted (present for 2.11+ deletes). */
+  deletedAt?: string
 }
 
 export interface ImportedAsset {

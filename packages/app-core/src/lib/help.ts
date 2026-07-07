@@ -51,7 +51,7 @@ export const HELP_QUICK_START: HelpCard[] = [
   {
     title: 'Insert structure while you type',
     body:
-      'Type `/` to insert headings, lists, callouts, code blocks, tables, links, images, and other markdown structures. Type `@` to insert date shortcuts like Today and Tomorrow as ISO dates.'
+      'Type `/` to insert headings, lists, callouts, code blocks, tables, links, images, and other markdown structures. Type `@` to insert date shortcuts like Today and Tomorrow as ISO dates, or `@time` / `@now` for the current time.'
   },
   {
     title: 'Format a selection',
@@ -235,6 +235,11 @@ export const HELP_CORE_CONCEPTS: HelpCard[] = [
       "Switch Tasks to Calendar (button or `2`) to see tasks laid out by due date. A task written inside a daily note automatically shows on that day — no `due:` needed — so the day you wrote it on is the day it lands. Type in the box under the grid to add a task to the selected day (it’s created in that day’s daily note, offering to create the note first for a day that has none). Reschedule by dragging a task onto another day, or from the keyboard: `Tab` picks a task in the day list, `<` / `>` shifts it a day earlier/later, and `T` moves it to today."
   },
   {
+    title: 'Forward a task to another note',
+    body:
+      'Forwarding moves a task to a different note while leaving a record behind — the bullet-journal “migrate” gesture. Type `>` inside a task’s checkbox (turning `- [ ]` into `- [>]`) to open a note picker, run “Forward Task to Note…” from the command palette with the cursor on a task, or press `>` on a task in the Tasks list. The original stays as `- [>] … [[Target]]` (a forwarded marker linking to where it went), and a fresh `- [ ] … [[Source]]` copy is added to the note you pick, backlinked home. Forwarded tasks collect under their own “Forwarded” group in the Tasks list, kept out of Today and Done.'
+  },
+  {
     title: 'Moving notes is path-first',
     body:
       'Use the note context menu, search `move` or `mv` in the command palette, or run `:move` / `:mv` from the ex line to move the active note into Inbox or Archive. With no argument, the command opens the folder picker; with a target like `:mv archive/Reference` or `:move inbox/Work`, it moves the note directly. The move prompt autocompletes folder paths, so you can type and Tab through existing destinations instead of dragging.'
@@ -250,9 +255,9 @@ export const HELP_CORE_CONCEPTS: HelpCard[] = [
       'When you type `/` at the start of a line or after whitespace, ZenNotes opens an inline insert menu for common markdown structures such as headings, bulleted or numbered lists, to-do items, callouts, code blocks, dividers, tables, math blocks, links, images, and even creating a new note page.'
   },
   {
-    title: '@ shortcuts insert relative dates',
+    title: '@ inserts dates and links notes',
     body:
-      'Typing `@` in normal text opens date suggestions for Today, Yesterday, and Tomorrow. Choosing one inserts an ISO date like `2026-04-15`, which keeps notes file-friendly, searchable, and easy to sort.'
+      'Typing `@` in normal text opens suggestions: the date shortcuts (Today, Yesterday, Tomorrow), the current time (Now — type `@time` or `@now`), plus any notes matching what you type. Choosing a date inserts an ISO date like `2026-04-15`; choosing Now inserts the current time in your configured 12-hour or 24-hour format (Settings → Editor → Time format); choosing a note inserts a `[[wikilink]]`, so `@` is a quick alternative to `[[`. A bare `@` leads with the dates and Now — start typing letters and matching notes appear.'
   },
   {
     title: 'Templates scaffold new notes',
@@ -272,7 +277,7 @@ export const HELP_CORE_CONCEPTS: HelpCard[] = [
   {
     title: 'Links are actionable',
     body:
-      'Use [[wikilinks]] or markdown links. In normal mode, the follow-link motion opens the link under the cursor, offers to create missing notes, and pins PDFs into the reference pane. Prefix a wikilink with `!` to embed rather than link: `![[Note]]` inlines the target note content in the reading view and PDF export — recursively, with cycle protection — so a master note can pull in sub-notes and export to PDF as one document. `![[image.png]]` embeds an image.'
+      'Use [[wikilinks]] or markdown links. Following a link — click it, Cmd/Ctrl-click it, or use the follow-link motion (`gd`) in normal mode — opens the note under the cursor and pins PDFs into the reference pane. If the note does not exist yet, following the link offers to create it (after you confirm) rather than leaving a dead link. Prefix a wikilink with `!` to embed rather than link: `![[Note]]` inlines the target note content in the reading view and PDF export — recursively, with cycle protection — so a master note can pull in sub-notes and export to PDF as one document. `![[image.png]]` embeds an image.'
   },
   {
     title: 'Files stay local',
@@ -424,9 +429,9 @@ export const HELP_SHORTCUT_SECTIONS: HelpShortcutSection[] = [
       },
       {
         keys: '@',
-        action: 'Open date shortcuts',
+        action: 'Open date/time shortcuts',
         detail:
-          'Show inline suggestions for Today, Yesterday, and Tomorrow while writing so you can insert dates without leaving the keyboard.'
+          'Show inline suggestions for Today, Yesterday, Tomorrow, and the current time (`@time` / `@now`) while writing so you can insert dates and times without leaving the keyboard.'
       },
       {
         keys: 'Select text, then m',
@@ -464,7 +469,8 @@ export const HELP_SHORTCUT_SECTIONS: HelpShortcutSection[] = [
       { keys: 'j / k', action: 'Move row cursor', detail: 'Step through task rows, tagged notes, or trashed notes.' },
       { keys: 'g g / G', action: 'Jump to top or bottom', detail: 'Move to the first or last visible result.' },
       { keys: 'Enter / o', action: 'Open current result', detail: 'Open the selected task source note, tagged note, or trashed note.' },
-      { keys: 'x', action: 'Toggle task', detail: 'Tasks view only: check or uncheck the selected task. Space also toggles unless Space is your Vim leader key, in which case it starts a leader sequence.' },
+      { keys: 'x', action: 'Toggle task', detail: 'Tasks view only: check or uncheck the selected task. A checked task lingers in place for a couple of seconds before it drops into Done, so you can toggle it again to undo. Space also toggles unless Space is your Vim leader key, in which case it starts a leader sequence.' },
+      { keys: '>', action: 'Forward task', detail: 'Tasks list only: forward the selected task to another note. Opens a note picker; the original becomes a forwarded record (`[>]`) linking to the target, and a fresh copy is added there, backlinked home. Forwarded tasks live under a “Forwarded” group.' },
       { keys: 'r', action: 'Restore trashed note', detail: 'Trash view only: restore the selected trashed note.' },
       { keys: 'x / d', action: 'Delete forever', detail: 'Trash view only: permanently delete the selected trashed note after confirmation.' },
       { keys: '/', action: 'Filter the view', detail: 'Focus the local filter box for tasks, tag matches, or trashed notes.' },
@@ -507,6 +513,11 @@ export const HELP_VIM_COMMANDS: HelpExCommand[] = [
     detail: 'Writes the current note, then closes it. On virtual views like Tasks, Tags, Help, or Trash it just closes.'
   },
   {
+    command: ':saveas name / :sav name',
+    summary: 'Save the note under a new name',
+    detail: 'Like Vim: writes a copy of the current note under the given title and keeps the original, then switches to editing the copy.'
+  },
+  {
     command: ':format',
     summary: 'Format markdown',
     detail: 'Runs markdown formatting on the active note.'
@@ -530,6 +541,11 @@ export const HELP_VIM_COMMANDS: HelpExCommand[] = [
     command: ':weekly',
     summary: "Open this week's note",
     detail: 'Open or create this week’s note with the configured weekly note pattern (requires weekly notes enabled in Settings → Vault). Uses the assigned weekly template if one is set.'
+  },
+  {
+    command: ':monthly',
+    summary: "Open this month's note",
+    detail: 'Open or create this month’s note with the configured monthly note pattern (requires monthly notes enabled in Settings → Vault). Uses the assigned monthly template if one is set.'
   },
   {
     command: ':tag foo bar',
@@ -612,6 +628,11 @@ export const HELP_VIM_COMMANDS: HelpExCommand[] = [
     detail: 'Open wikilinks, open external links, create missing notes, or pin PDFs into the reference pane.'
   },
   {
+    command: 'o / O',
+    summary: 'Open a line, continuing the list',
+    detail: 'On a list item, `o` (below) and `O` (above) carry the marker forward like pressing Enter: bullets repeat, numbered lists advance and renumber, checkboxes start a fresh unchecked box, and indentation is kept. On a non-list line they open a plain new line as usual.'
+  },
+  {
     command: '<Tab> / <Shift-Tab> on the ex line',
     summary: 'Complete ex commands',
     detail: 'Cycle through every registered ex command with a wildmenu popup, and complete supported command arguments like `:view edit|split|preview` and `:zen toggle|on|off`.'
@@ -675,6 +696,11 @@ export const HELP_VIM_COMMANDS: HelpExCommand[] = [
     command: '<Space> w',
     summary: "Leader this week's note",
     detail: 'Open or create this week’s note (when weekly notes are enabled in Settings → Vault).'
+  },
+  {
+    command: '<Space> m',
+    summary: "Leader this month's note",
+    detail: 'Open or create this month’s note (when monthly notes are enabled in Settings → Vault).'
   },
   {
     command: ':outline',
@@ -763,6 +789,7 @@ export const HELP_SETTINGS: HelpSettingsSection[] = [
       { label: 'Primary notes location', detail: 'Treat `inbox/` as the main notes area, or use the vault root directly for an Obsidian-style flat vault.' },
       { label: 'Daily notes', detail: "Enable a daily-notes workflow, choose a directory pattern, naming pattern, locale, and template so each day’s note starts in the right place. Supported tokens are `yyyy`, `yy`, `M`, `MM`, `MMM`, `MMMM`, `d`, `dd`, `EEE`, `EEEE`, `w`, and `ww`; quote literal words like `'Daily Notes'/yyyy/MM-MMM`. Open today’s note with `Space d`, `:daily`, or the command palette. Two task options live here too: “Tasks are due on the note’s date” makes tasks in a daily note show on the calendar for that day (on by default), and “Roll over unfinished tasks to today” moves every unchecked task from past daily notes into today when you open it (off by default; also runnable from the command palette)." },
       { label: 'Weekly notes', detail: "Enable weekly notes with a directory pattern, naming pattern, locale, and template. Weekly patterns support the same tokens as daily notes plus ISO week `w` and `ww`; the default title pattern is `yyyy-'W'ww`. Open this week’s note with `Space w`, `:weekly`, or the command palette." },
+      { label: 'Monthly notes', detail: 'Enable monthly notes with a directory pattern, naming pattern, locale, and template. It creates one note per calendar month, handy for monthly reviews and reflections. The default title pattern is `yyyy-MM` (e.g. `2026-07`). Open this month’s note with `Space m`, `:monthly`, or the command palette. Each notes section in Settings now collapses its fields when its toggle is off.' },
       { label: 'System folder labels', detail: 'Rename how Inbox, Quick Notes, Archive, and Trash appear in the UI without renaming the real folders on disk.' }
     ]
   },

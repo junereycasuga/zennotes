@@ -352,7 +352,7 @@ export function TagView(): JSX.Element {
           <button
             type="button"
             onClick={closeTagView}
-            title="Close (:q or Esc)"
+            title="Close (:q)"
             className="flex h-6 w-6 items-center justify-center rounded-md text-current/70 hover:bg-current/10"
           >
             <CloseIcon width={14} height={14} />

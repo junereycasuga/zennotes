@@ -19,6 +19,7 @@ import { randomUUID } from 'node:crypto'
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 import { IPC } from '@shared/ipc'
 import type {
   NoteMeta,
@@ -80,6 +81,9 @@ import {
   renameAsset,
   removeDemoTour,
   restoreDeletedAsset,
+  listDeletedAssets,
+  purgeDeletedAsset,
+  emptyDeletedAssets,
   restoreFromTrash,
   searchVaultTextCapabilities,
   searchVaultText,
@@ -192,8 +196,10 @@ import {
 } from './file-open'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const nodeRequire = createRequire(import.meta.url)
 const LOCAL_ASSET_SCHEME = 'zen-asset'
 const THEME_ASSET_SCHEME = 'zen-theme'
+const EXCALIDRAW_ASSET_SCHEME = 'zen-excalidraw'
 
 const PRIVILEGED_ASSET_PRIVILEGES = {
   standard: true,
@@ -205,7 +211,8 @@ const PRIVILEGED_ASSET_PRIVILEGES = {
 
 protocol.registerSchemesAsPrivileged([
   { scheme: LOCAL_ASSET_SCHEME, privileges: PRIVILEGED_ASSET_PRIVILEGES },
-  { scheme: THEME_ASSET_SCHEME, privileges: PRIVILEGED_ASSET_PRIVILEGES }
+  { scheme: THEME_ASSET_SCHEME, privileges: PRIVILEGED_ASSET_PRIVILEGES },
+  { scheme: EXCALIDRAW_ASSET_SCHEME, privileges: PRIVILEGED_ASSET_PRIVILEGES }
 ])
 
 let mainWindow: BrowserWindow | null = null
@@ -2550,6 +2557,28 @@ function registerIpc(): void {
     return await restoreDeletedAsset(v.root, deleted)
   })
 
+  handle(IPC.VAULT_LIST_DELETED_ASSETS, async () => {
+    if (isRemoteWorkspaceActive()) return []
+    const v = requireVault()
+    return await listDeletedAssets(v.root)
+  })
+
+  handle(IPC.VAULT_PURGE_DELETED_ASSET, async (_e, undoToken: string) => {
+    if (isRemoteWorkspaceActive()) {
+      throw new Error('Asset deletion is only available for local vaults right now.')
+    }
+    const v = requireVault()
+    await purgeDeletedAsset(v.root, undoToken)
+  })
+
+  handle(IPC.VAULT_EMPTY_DELETED_ASSETS, async () => {
+    if (isRemoteWorkspaceActive()) {
+      throw new Error('Asset deletion is only available for local vaults right now.')
+    }
+    const v = requireVault()
+    await emptyDeletedAssets(v.root)
+  })
+
   handle(
     IPC.VAULT_CREATE_FOLDER,
     async (_e, folder: NoteFolder, subpath: string) => {
@@ -3426,6 +3455,47 @@ app.whenReady().then(async () => {
       headers: {
         'content-type': mimeTypeForPath(abs),
         'cache-control': 'no-cache'
+      }
+    })
+  })
+
+  // Excalidraw's bundled fonts (dist/prod/fonts), served locally so the font
+  // picker works offline. With EXCALIDRAW_ASSET_PATH unset Excalidraw fetches its
+  // fonts from esm.sh, which the renderer CSP blocks, so nothing applied (#324). A
+  // packaged build ships only out/**, so the fonts are copied to
+  // resources/excalidraw-fonts (extraResources); dev reads them from node_modules.
+  const excalidrawFontsDir = (): string => {
+    if (app.isPackaged) return path.join(process.resourcesPath, 'excalidraw-fonts')
+    // The package `exports` map blocks resolving package.json, so derive the
+    // fonts dir from the main entry (.../dist/prod/index.js -> .../dist/prod/fonts).
+    const entry = nodeRequire.resolve('@excalidraw/excalidraw')
+    return path.join(path.dirname(entry), 'fonts')
+  }
+  const excalidrawFontMime = (p: string): string =>
+    /\.woff2$/i.test(p)
+      ? 'font/woff2'
+      : /\.woff$/i.test(p)
+        ? 'font/woff'
+        : /\.otf$/i.test(p)
+          ? 'font/otf'
+          : /\.ttf$/i.test(p)
+            ? 'font/ttf'
+            : 'application/octet-stream'
+  protocol.handle(EXCALIDRAW_ASSET_SCHEME, async (request) => {
+    // zen-excalidraw://assets/fonts/<Family>/<file> -> <fontsDir>/<Family>/<file>
+    const rel = decodeURIComponent(new URL(request.url).pathname)
+      .replace(/^\/+/, '')
+      .replace(/^fonts\//, '')
+    const root = path.resolve(excalidrawFontsDir())
+    const abs = path.resolve(root, rel)
+    if ((abs !== root && !abs.startsWith(root + path.sep)) || !/\.(woff2?|otf|ttf)$/i.test(abs)) {
+      throw new Error(`Invalid Excalidraw font URL: ${request.url}`)
+    }
+    const data = await fsp.readFile(abs)
+    return new Response(data, {
+      headers: {
+        'content-type': excalidrawFontMime(abs),
+        'cache-control': 'public, max-age=31536000, immutable'
       }
     })
   })
