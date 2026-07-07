@@ -617,6 +617,11 @@ export const HELP_VIM_COMMANDS: HelpExCommand[] = [
     detail: 'Open wikilinks, open external links, create missing notes, or pin PDFs into the reference pane.'
   },
   {
+    command: 'o / O',
+    summary: 'Open a line, continuing the list',
+    detail: 'On a list item, `o` (below) and `O` (above) carry the marker forward like pressing Enter: bullets repeat, numbered lists advance and renumber, checkboxes start a fresh unchecked box, and indentation is kept. On a non-list line they open a plain new line as usual.'
+  },
+  {
     command: '<Tab> / <Shift-Tab> on the ex line',
     summary: 'Complete ex commands',
     detail: 'Cycle through every registered ex command with a wildmenu popup, and complete supported command arguments like `:view edit|split|preview` and `:zen toggle|on|off`.'
