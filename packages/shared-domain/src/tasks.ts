@@ -135,8 +135,10 @@ function parseNoteDefaults(body: string): { defaults: NoteDefaults; fmEndOffset:
 // Inline token extraction
 // ---------------------------------------------------------------------------
 
-// Word-boundary anchored so `due:` inside a URL-ish blob won't match.
-const INLINE_DUE_RE = /(?:^|\s)due:(\S+)/i
+// Word-boundary anchored so `due:` inside a URL-ish blob won't match. Optional
+// whitespace after the colon so a `due: 2026-01-01` written (or inserted by the
+// @-date completion) with a space parses the same as `due:2026-01-01`. (#343)
+const INLINE_DUE_RE = /(?:^|\s)due:\s*(\S+)/i
 const INLINE_PRIORITY_RE = /(?:^|\s)!(high|med|medium|low|h|m|l)\b/i
 const INLINE_WAITING_RE = /(?:^|\s)@waiting\b/i
 // Match #tag-like tokens but only when preceded by start-of-string/whitespace.

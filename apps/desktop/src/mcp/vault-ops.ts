@@ -865,7 +865,9 @@ export async function searchText(
 /* ---------- Tasks ---------------------------------------------------- */
 
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?/
-const INLINE_DUE_RE = /(?:^|\s)due:(\S+)/i
+// Optional whitespace after the colon so a spaced `due: 2026-01-01` parses like
+// `due:2026-01-01` (kept in sync with packages/shared-domain/src/tasks.ts). (#343)
+const INLINE_DUE_RE = /(?:^|\s)due:\s*(\S+)/i
 const INLINE_PRIORITY_RE = /(?:^|\s)!(high|med|medium|low|h|m|l)\b/i
 const INLINE_WAITING_RE = /(?:^|\s)@waiting\b/i
 const INLINE_TAG_RE = /(?:^|\s)#([\p{L}\d][\p{L}\d/_-]*)/gu

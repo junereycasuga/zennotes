@@ -164,7 +164,9 @@ export function setTaskWaitingAtIndex(
 }
 
 const PRIORITY_TOKEN_RE = /(^|\s)!(?:high|med|medium|low|h|m|l)\b/i
-const DUE_TOKEN_RE = /(^|\s)due:\S+/i
+// Optional whitespace after the colon so a spaced `due: 2026-01-01` token is
+// stripped/replaced as one unit when rescheduling, matching the parser. (#343)
+const DUE_TOKEN_RE = /(^|\s)due:\s*\S+/i
 
 /** Replace, insert, or remove the priority token (`!high|!med|!low`)
  *  on the task line at `taskIndex`. Pass `null` to clear. */
