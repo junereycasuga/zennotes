@@ -53,6 +53,7 @@ import {
   takeTaskLineAtIndex,
   setTaskCheckedAtIndex,
   setTaskDueAtIndex,
+  setTaskForwardedAtIndex,
   setTaskPriorityAtIndex,
   setTaskTextAtIndex,
   setTaskWaitingAtIndex,
@@ -2213,6 +2214,10 @@ interface Store {
    *  removing it from its current note. Falls back to setting the due date
    *  when daily notes are disabled or it already lives in that day's note. */
   moveTaskToDate: (task: VaultTask, dateIso: string) => Promise<void>
+  /** Forward a task to another note (#316): leaves `[>]` + a link to the target
+   *  on the original, and appends a fresh `- [ ]` copy (backlinked) to the
+   *  target note. */
+  forwardTask: (task: VaultTask, targetPath: string) => Promise<void>
   setTasksFilter: (q: string) => void
   setTasksViewMode: (mode: TasksViewMode) => void
   setKanbanGroupBy: (group: KanbanGroupBy) => void
@@ -4165,6 +4170,76 @@ export const useStore = create<Store>((set, get) => {
       vaultTasks: [
         ...s.vaultTasks.filter(
           (t) => t.sourcePath !== task.sourcePath && t.sourcePath !== target.path
+        ),
+        ...srcTasks,
+        ...tgtTasks
+      ]
+    }))
+  },
+
+  forwardTask: async (task, targetPath) => {
+    if (!targetPath || targetPath === task.sourcePath) return
+    const targetMeta = get().notes.find((n) => n.path === targetPath)
+    if (!targetMeta) return
+
+    const srcBuffer = get().noteContents[task.sourcePath]
+    const tgtBuffer = get().noteContents[targetPath]
+    let srcBody: string
+    let tgtBody: string
+    try {
+      srcBody = srcBuffer?.body ?? (await window.zen.readNote(task.sourcePath)).body
+      tgtBody = tgtBuffer?.body ?? (await window.zen.readNote(targetPath)).body
+    } catch (err) {
+      console.error('forwardTask read failed', err)
+      return
+    }
+
+    // Cross-links are title-based wikilinks (navigable + resolver-friendly).
+    const backLink = `[[${task.noteTitle}]]`
+    const forwardLink = `[[${targetMeta.title}]]`
+
+    // Original: flip to `[>]` and record where it went.
+    const nextSrc = setTaskForwardedAtIndex(srcBody, task.taskIndex, forwardLink)
+    if (nextSrc === srcBody) return
+
+    // Copy: a fresh open task in the target, backlinked to the origin.
+    const copyLine = `- [ ] ${task.content} ${backLink}`.replace(/\s+$/u, '')
+    const trimmed = tgtBody.replace(/\s+$/u, '')
+    const nextTgt = trimmed.length ? `${trimmed}\n${copyLine}\n` : `${copyLine}\n`
+
+    if (srcBuffer) get().updateNoteBody(task.sourcePath, nextSrc)
+    else {
+      try {
+        await window.zen.writeNote(task.sourcePath, nextSrc)
+      } catch (err) {
+        console.error('forwardTask write source failed', err)
+        return
+      }
+    }
+    if (tgtBuffer) get().updateNoteBody(targetPath, nextTgt)
+    else {
+      try {
+        await window.zen.writeNote(targetPath, nextTgt)
+      } catch (err) {
+        console.error('forwardTask write target failed', err)
+        return
+      }
+    }
+
+    const srcTasks = parseTasksFromBody(nextSrc, {
+      path: task.sourcePath,
+      title: task.noteTitle,
+      folder: task.noteFolder
+    })
+    const tgtTasks = parseTasksFromBody(nextTgt, {
+      path: targetPath,
+      title: targetMeta.title,
+      folder: targetMeta.folder
+    })
+    set((s) => ({
+      vaultTasks: [
+        ...s.vaultTasks.filter(
+          (t) => t.sourcePath !== task.sourcePath && t.sourcePath !== targetPath
         ),
         ...srcTasks,
         ...tgtTasks

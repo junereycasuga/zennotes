@@ -17,6 +17,7 @@ function makeTask(content: string, taskIndex = 0): VaultTask {
     rawText: `- [ ] ${content}`,
     content,
     checked: false,
+    forwarded: false,
     waiting: false,
     tags: []
   }

@@ -3,6 +3,7 @@ import { isTasksViewActive, useStore, type TasksViewMode } from '../store'
 import { inferDailyTaskDueDates, type VaultTask } from '@shared/tasks'
 import { buildDailyNoteDateByPath } from '../lib/vault-layout'
 import { computeTasksRender, isOverdue } from '../lib/tasks-filter'
+import { forwardTaskWithPicker } from '../lib/forward-task'
 import { TasksRow } from './TasksRow'
 import { TasksCalendar } from './TasksCalendar'
 import { TasksKanban } from './TasksKanban'
@@ -11,12 +12,13 @@ import { advanceSequence, getKeymapBinding, matchesSequenceToken } from '../lib/
 import { isImeComposing } from '../lib/ime'
 import { isAppOverlayOpen } from '../lib/overlay-open'
 
-type GroupKey = 'today' | 'upcoming' | 'waiting' | 'done'
+type GroupKey = 'today' | 'upcoming' | 'waiting' | 'forwarded' | 'done'
 
 const GROUP_LABELS: Record<GroupKey, string> = {
   today: 'Today',
   upcoming: 'Upcoming',
   waiting: 'Waiting',
+  forwarded: 'Forwarded',
   done: 'Done'
 }
 
@@ -77,6 +79,7 @@ export function TasksView(): JSX.Element {
     today: false,
     upcoming: false,
     waiting: false,
+    forwarded: true,
     done: true
   })
 
@@ -456,6 +459,12 @@ export function TasksView(): JSX.Element {
       if (((vimMode && key === ' ') || seq('nav.toggleTask')) && currentTask) {
         consume()
         lingerToggle(currentTask)
+        return
+      }
+      // Forward the selected task to another note (#316). Vim-gated single key.
+      if (vimMode && key === '>' && currentTask) {
+        consume()
+        void forwardTaskWithPicker(currentTask)
         return
       }
     }

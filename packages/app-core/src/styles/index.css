@@ -1734,6 +1734,22 @@ textarea,
   margin-right: 0.15em;
 }
 
+/* Forwarded task marker `- [>]` (#316) — an arrow, sized to sit like the
+   checkbox. Uses the accent so a forwarded task reads as "sent onward". */
+.cm-editor .cm-task-forwarded {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: text-bottom;
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 0.15em;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--z-accent-fg, var(--z-accent, currentColor));
+  opacity: 0.85;
+}
+
 .cm-editor .cm-task-checkbox-input {
   appearance: none;
   -webkit-appearance: none;

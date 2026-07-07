@@ -148,7 +148,9 @@ async function folderRoot(root: string, folder: NoteFolder): Promise<string> {
 }
 
 const FENCE_LINE_RE = /^(\s{0,3})(`{3,}|~{3,})/
-const TASK_LINE_RE = /^\s*[-*+]\s+\[([ xX])\](.*)$/
+// `>` = forwarded to another note (#316) — recognized so forwarded tasks aren't
+// invisible to the MCP scanner. Kept in sync with @shared/tasklists.
+const TASK_LINE_RE = /^\s*[-*+]\s+\[([ xX>])\](.*)$/
 
 export interface NoteMeta {
   path: string

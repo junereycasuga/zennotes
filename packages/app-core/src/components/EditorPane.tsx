@@ -52,6 +52,7 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { isImeComposing } from '../lib/ime'
 import { resolveCodeLanguage } from '../lib/cm-code-languages'
 import { markdownListIndentPlugin } from '../lib/cm-markdown-list-indent'
+import { forwardOnCheckboxArrow } from '../lib/cm-forward-task'
 import { completionNavKeymap } from '../lib/cm-completion-nav'
 import { vimAwareDefaultKeymap, vimAwareMarkdownKeymap } from '../lib/cm-vim-default-keymap'
 import { scrollOff } from '../lib/cm-scrolloff'
@@ -295,6 +296,7 @@ function markdownEditingExtensions(): Extension[] {
     markdownListIndentPlugin,
     frontmatterStyle,
     orderedListRenumber,
+    forwardOnCheckboxArrow,
     headingFolding(),
     codeBlockFontPlugin
   ]
