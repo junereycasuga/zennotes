@@ -51,7 +51,7 @@ export const HELP_QUICK_START: HelpCard[] = [
   {
     title: 'Insert structure while you type',
     body:
-      'Type `/` to insert headings, lists, callouts, code blocks, tables, links, images, and other markdown structures. Type `@` to insert date shortcuts like Today and Tomorrow as ISO dates.'
+      'Type `/` to insert headings, lists, callouts, code blocks, tables, links, images, and other markdown structures. Type `@` to insert date shortcuts like Today and Tomorrow as ISO dates, or `@time` / `@now` for the current time.'
   },
   {
     title: 'Format a selection',
@@ -252,7 +252,7 @@ export const HELP_CORE_CONCEPTS: HelpCard[] = [
   {
     title: '@ inserts dates and links notes',
     body:
-      'Typing `@` in normal text opens suggestions: the date shortcuts (Today, Yesterday, Tomorrow) plus any notes matching what you type. Choosing a date inserts an ISO date like `2026-04-15`; choosing a note inserts a `[[wikilink]]`, so `@` is a quick alternative to `[[`. A bare `@` leads with just the dates — start typing letters and matching notes appear.'
+      'Typing `@` in normal text opens suggestions: the date shortcuts (Today, Yesterday, Tomorrow), the current time (Now — type `@time` or `@now`), plus any notes matching what you type. Choosing a date inserts an ISO date like `2026-04-15`; choosing Now inserts the current time in your configured 12-hour or 24-hour format (Settings → Editor → Time format); choosing a note inserts a `[[wikilink]]`, so `@` is a quick alternative to `[[`. A bare `@` leads with the dates and Now — start typing letters and matching notes appear.'
   },
   {
     title: 'Templates scaffold new notes',
@@ -424,9 +424,9 @@ export const HELP_SHORTCUT_SECTIONS: HelpShortcutSection[] = [
       },
       {
         keys: '@',
-        action: 'Open date shortcuts',
+        action: 'Open date/time shortcuts',
         detail:
-          'Show inline suggestions for Today, Yesterday, and Tomorrow while writing so you can insert dates without leaving the keyboard.'
+          'Show inline suggestions for Today, Yesterday, Tomorrow, and the current time (`@time` / `@now`) while writing so you can insert dates and times without leaving the keyboard.'
       },
       {
         keys: 'Select text, then m',

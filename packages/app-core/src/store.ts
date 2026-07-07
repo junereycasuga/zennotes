@@ -78,7 +78,9 @@ import { normalizeKeymapOverrides } from './lib/keymaps'
 import {
   PORTABLE_PREF_KEYS,
   pickPortablePrefs,
-  type AppConfigPortable
+  defaultTimeFormat,
+  type AppConfigPortable,
+  type TimeFormat
 } from '@shared/app-config'
 import {
   type LabelKey,
@@ -381,6 +383,7 @@ interface Prefs {
   editorFontSize: number    // px — affects editor + preview
   editorLineHeight: number  // unitless multiplier
   editorScrollOff: number   // vim scrolloff — lines kept above/below the cursor (0 = off)
+  timeFormat: TimeFormat    // clock format for the @time macro
   previewMaxWidth: number   // px — max reading width for preview surfaces
   lineNumberMode: LineNumberMode
   lineNumberPosition: LineNumberPosition
@@ -605,6 +608,7 @@ export const DEFAULT_PREFS: Prefs = {
   editorFontSize: 16,
   editorLineHeight: 1.7,
   editorScrollOff: 0,
+  timeFormat: defaultTimeFormat(),
   previewMaxWidth: 920,
   lineNumberMode: 'off',
   lineNumberPosition: 'text',
@@ -735,6 +739,10 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
       typeof p.editorScrollOff === 'number' && p.editorScrollOff >= 0
         ? Math.floor(p.editorScrollOff)
         : DEFAULT_PREFS.editorScrollOff,
+    timeFormat:
+      p.timeFormat === '12h' || p.timeFormat === '24h'
+        ? p.timeFormat
+        : DEFAULT_PREFS.timeFormat,
     previewMaxWidth:
       typeof p.previewMaxWidth === 'number'
         ? Math.min(1600, Math.max(640, p.previewMaxWidth))
@@ -1464,6 +1472,7 @@ function collectPrefs(s: {
   editorFontSize: number
   editorLineHeight: number
   editorScrollOff: number
+  timeFormat: TimeFormat
   previewMaxWidth: number
   lineNumberMode: LineNumberMode
   lineNumberPosition: LineNumberPosition
@@ -1530,6 +1539,7 @@ function collectPrefs(s: {
     editorFontSize: s.editorFontSize,
     editorLineHeight: s.editorLineHeight,
     editorScrollOff: s.editorScrollOff,
+    timeFormat: s.timeFormat,
     previewMaxWidth: s.previewMaxWidth,
     lineNumberMode: s.lineNumberMode,
     viewSettingsScope: s.viewSettingsScope,
@@ -1958,6 +1968,7 @@ interface Store {
   editorFontSize: number
   editorLineHeight: number
   editorScrollOff: number
+  timeFormat: TimeFormat
   previewMaxWidth: number
   lineNumberMode: LineNumberMode
   lineNumberPosition: LineNumberPosition
@@ -2298,6 +2309,7 @@ interface Store {
   setEditorFontSize: (px: number) => void
   setEditorLineHeight: (mult: number) => void
   setEditorScrollOff: (lines: number) => void
+  setTimeFormat: (format: TimeFormat) => void
   setPreviewMaxWidth: (px: number) => void
   setLineNumberMode: (mode: LineNumberMode) => void
   setViewSettingsScope: (scope: 'global' | 'vault') => void
@@ -3408,6 +3420,7 @@ export const useStore = create<Store>((set, get) => {
   editorFontSize: loadPrefs().editorFontSize,
   editorLineHeight: loadPrefs().editorLineHeight,
   editorScrollOff: loadPrefs().editorScrollOff,
+  timeFormat: loadPrefs().timeFormat,
   previewMaxWidth: loadPrefs().previewMaxWidth,
   lineNumberMode: loadPrefs().lineNumberMode,
   viewSettingsScope: loadPrefs().viewSettingsScope,
@@ -5209,6 +5222,10 @@ export const useStore = create<Store>((set, get) => {
   },
   setEditorScrollOff: (lines) => {
     set({ editorScrollOff: Math.max(0, Math.floor(lines)) })
+    savePrefs(collectPrefs(get()))
+  },
+  setTimeFormat: (format) => {
+    set({ timeFormat: format })
     savePrefs(collectPrefs(get()))
   },
   setPreviewMaxWidth: (px) => {

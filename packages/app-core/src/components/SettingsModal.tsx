@@ -489,6 +489,8 @@ export function SettingsModal(): JSX.Element {
   const setEditorLineHeight = useStore((s) => s.setEditorLineHeight)
   const editorScrollOff = useStore((s) => s.editorScrollOff)
   const setEditorScrollOff = useStore((s) => s.setEditorScrollOff)
+  const timeFormat = useStore((s) => s.timeFormat)
+  const setTimeFormat = useStore((s) => s.setTimeFormat)
   const previewMaxWidth = useStore((s) => s.previewMaxWidth)
   const setPreviewMaxWidth = useStore((s) => s.setPreviewMaxWidth)
   const lineNumberMode = useStore((s) => s.lineNumberMode)
@@ -1908,6 +1910,12 @@ export function SettingsModal(): JSX.Element {
           keywords: ['scroll', 'scrolloff', 'vim', 'cursor', 'margin']
         },
         {
+          id: 'time-format',
+          title: 'Time format',
+          description: 'Clock format the @time macro inserts.',
+          keywords: ['time', 'clock', '12 hour', '24 hour', '@time', 'now', 'macro']
+        },
+        {
           id: 'reading-width',
           title: 'Reading width',
           description: 'Maximum width for preview and split-preview content.',
@@ -2006,6 +2014,17 @@ export function SettingsModal(): JSX.Element {
               unit=" lines"
               settingId="scroll-off"
               onChange={setEditorScrollOff}
+            />
+            <SegmentedRow
+              label="Time format"
+              description="Clock format the @time macro inserts (@time / @now in a note)."
+              value={timeFormat}
+              settingId="time-format"
+              options={[
+                { value: '12h', label: '12-hour' },
+                { value: '24h', label: '24-hour' }
+              ]}
+              onChange={(next) => setTimeFormat(next)}
             />
             <SliderRow
               label="Reading width"

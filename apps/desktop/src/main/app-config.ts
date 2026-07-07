@@ -124,6 +124,11 @@ const SCALAR_FIELDS: Partial<Record<PortablePrefKey, ScalarFieldMap>> = {
     tomlKey: 'scroll_off',
     comment: 'vim scrolloff — lines kept above/below the cursor (0 = off)'
   },
+  timeFormat: {
+    section: 'editor',
+    tomlKey: 'time_format',
+    comment: 'clock format for the @time macro (12h or 24h)'
+  },
   previewMaxWidth: {
     section: 'editor',
     tomlKey: 'preview_max_width',
