@@ -497,6 +497,10 @@ function registerVimCommands(): void {
     void useStore.getState().openThisWeekWeeklyNote()
   })
 
+  Vim.defineEx('monthly', 'monthly', () => {
+    void useStore.getState().openThisMonthMonthlyNote()
+  })
+
   // `:tag foo` starts (or updates) the Tags view with `foo` selected.
   // `:tag foo bar baz` replaces the selection set wholesale. `:tag`
   // alone opens the Tags tab with whatever's currently selected (if

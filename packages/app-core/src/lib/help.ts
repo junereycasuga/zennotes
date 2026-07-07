@@ -543,6 +543,11 @@ export const HELP_VIM_COMMANDS: HelpExCommand[] = [
     detail: 'Open or create this week’s note with the configured weekly note pattern (requires weekly notes enabled in Settings → Vault). Uses the assigned weekly template if one is set.'
   },
   {
+    command: ':monthly',
+    summary: "Open this month's note",
+    detail: 'Open or create this month’s note with the configured monthly note pattern (requires monthly notes enabled in Settings → Vault). Uses the assigned monthly template if one is set.'
+  },
+  {
     command: ':tag foo bar',
     summary: 'Open Tags with a selection',
     detail: 'Open the Tags view and replace the selected tag set with the given tags.'
@@ -693,6 +698,11 @@ export const HELP_VIM_COMMANDS: HelpExCommand[] = [
     detail: 'Open or create this week’s note (when weekly notes are enabled in Settings → Vault).'
   },
   {
+    command: '<Space> m',
+    summary: "Leader this month's note",
+    detail: 'Open or create this month’s note (when monthly notes are enabled in Settings → Vault).'
+  },
+  {
     command: ':outline',
     summary: 'Note outline palette',
     detail: 'The ex-line path to the same searchable note outline opened by the Leader outline binding.'
@@ -779,6 +789,7 @@ export const HELP_SETTINGS: HelpSettingsSection[] = [
       { label: 'Primary notes location', detail: 'Treat `inbox/` as the main notes area, or use the vault root directly for an Obsidian-style flat vault.' },
       { label: 'Daily notes', detail: "Enable a daily-notes workflow, choose a directory pattern, naming pattern, locale, and template so each day’s note starts in the right place. Supported tokens are `yyyy`, `yy`, `M`, `MM`, `MMM`, `MMMM`, `d`, `dd`, `EEE`, `EEEE`, `w`, and `ww`; quote literal words like `'Daily Notes'/yyyy/MM-MMM`. Open today’s note with `Space d`, `:daily`, or the command palette. Two task options live here too: “Tasks are due on the note’s date” makes tasks in a daily note show on the calendar for that day (on by default), and “Roll over unfinished tasks to today” moves every unchecked task from past daily notes into today when you open it (off by default; also runnable from the command palette)." },
       { label: 'Weekly notes', detail: "Enable weekly notes with a directory pattern, naming pattern, locale, and template. Weekly patterns support the same tokens as daily notes plus ISO week `w` and `ww`; the default title pattern is `yyyy-'W'ww`. Open this week’s note with `Space w`, `:weekly`, or the command palette." },
+      { label: 'Monthly notes', detail: 'Enable monthly notes with a directory pattern, naming pattern, locale, and template. It creates one note per calendar month, handy for monthly reviews and reflections. The default title pattern is `yyyy-MM` (e.g. `2026-07`). Open this month’s note with `Space m`, `:monthly`, or the command palette. Each notes section in Settings now collapses its fields when its toggle is off.' },
       { label: 'System folder labels', detail: 'Rename how Inbox, Quick Notes, Archive, and Trash appear in the UI without renaming the real folders on disk.' }
     ]
   },

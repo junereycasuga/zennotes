@@ -267,6 +267,11 @@ export function VimNav(): JSX.Element | null {
         detail: 'Open or create the weekly note for this week.'
       },
       {
+        keyLabel: getKeymapDisplay(keymapOverrides, 'vim.leaderMonthlyNote'),
+        label: "This month's note",
+        detail: 'Open or create the monthly note for this month.'
+      },
+      {
         keyLabel: getKeymapDisplay(keymapOverrides, 'vim.leaderCalendar'),
         label: 'Toggle calendar',
         detail: 'Show or hide the calendar for the active daily/weekly note.'
@@ -848,6 +853,13 @@ export function VimNav(): JSX.Element | null {
           e.stopImmediatePropagation()
           resetLeader()
           void state.openThisWeekWeeklyNote()
+          return
+        }
+        if (matchesSequenceToken(e, overrides, 'vim.leaderMonthlyNote')) {
+          e.preventDefault()
+          e.stopImmediatePropagation()
+          resetLeader()
+          void state.openThisMonthMonthlyNote()
           return
         }
         if (matchesSequenceToken(e, overrides, 'vim.leaderCalendar')) {

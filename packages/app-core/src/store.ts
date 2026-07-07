@@ -102,6 +102,7 @@ import {
   folderForVaultRelativePath,
   findDailyNoteForDate,
   findWeeklyNoteForDate,
+  findMonthlyNoteForDate,
   noteTitleForDate,
   isPrimaryNotesAtRoot,
   removeFavoritesForFolder,
@@ -113,6 +114,7 @@ import {
   rewriteFavoritesForFolderRename,
   toggleFavorite as toggleFavoriteKey,
   weeklyNoteLocationForDate,
+  monthlyNoteLocationForDate,
   rewriteFolderColorsForRename,
   rewriteFolderIconsForRename
 } from './lib/vault-layout'
@@ -2372,6 +2374,7 @@ interface Store {
   setQuickNoteTitlePrefix: (prefix: string | null) => void
   openTodayDailyNote: () => Promise<void>
   openThisWeekWeeklyNote: () => Promise<void>
+  openThisMonthMonthlyNote: () => Promise<void>
   setTemplatePaletteOpen: (open: boolean) => void
   /** Open the template picker scoped to a folder; the chosen template is
    *  created there directly (no destination prompt). */
@@ -2410,6 +2413,7 @@ interface Store {
   setCalendarShowWeekNumbers: (show: boolean) => void
   openDailyNoteForDate: (date: Date) => Promise<void>
   openWeeklyNoteForDate: (date: Date) => Promise<void>
+  openMonthlyNoteForDate: (date: Date) => Promise<void>
   /** Find the daily note for `date`, creating it on disk (template-aware)
    *  WITHOUT navigating to it. Returns its meta, or null if daily notes are
    *  disabled or creation failed. */
@@ -2792,6 +2796,14 @@ function currentWeeklyPatternFromSettings(settings: VaultSettings): DateNotePatt
   }
 }
 
+function currentMonthlyPatternFromSettings(settings: VaultSettings): DateNotePatternSettings {
+  return {
+    directory: settings.monthlyNotes.directory,
+    titlePattern: settings.monthlyNotes.titlePattern,
+    locale: settings.monthlyNotes.locale
+  }
+}
+
 function appendDateNotePatternHistory(
   history: readonly DateNotePatternSettings[] | undefined,
   previous: DateNotePatternSettings,
@@ -2819,6 +2831,8 @@ function withDateNotePatternHistory(
   const nextDaily = currentDailyPatternFromSettings(next)
   const previousWeekly = currentWeeklyPatternFromSettings(previous)
   const nextWeekly = currentWeeklyPatternFromSettings(next)
+  const previousMonthly = currentMonthlyPatternFromSettings(previous)
+  const nextMonthly = currentMonthlyPatternFromSettings(next)
 
   return {
     ...next,
@@ -2847,6 +2861,19 @@ function withDateNotePatternHistory(
               nextWeekly
             )
           : next.weeklyNotes.legacyPatterns
+    },
+    monthlyNotes: {
+      ...next.monthlyNotes,
+      legacyPatterns:
+        previous.monthlyNotes.enabled &&
+        next.monthlyNotes.enabled &&
+        dateNotePatternKey(previousMonthly) !== dateNotePatternKey(nextMonthly)
+          ? appendDateNotePatternHistory(
+              next.monthlyNotes.legacyPatterns,
+              previousMonthly,
+              nextMonthly
+            )
+          : next.monthlyNotes.legacyPatterns
     }
   }
 }
@@ -5805,6 +5832,29 @@ export const useStore = create<Store>((set, get) => {
 
   openThisWeekWeeklyNote: async () => {
     await get().openWeeklyNoteForDate(new Date())
+  },
+
+  openMonthlyNoteForDate: async (date) => {
+    const state = get()
+    const settings = normalizeVaultSettings(state.vaultSettings)
+    if (!settings.monthlyNotes.enabled) return
+    const { title, subpath } = monthlyNoteLocationForDate(date, settings)
+    const existing = findMonthlyNoteForDate(state.notes, settings, date)
+    if (existing) {
+      set({ view: { kind: 'folder', folder: 'inbox', subpath } })
+      await get().selectNote(existing.path)
+      return
+    }
+    const template = resolveTemplate(state.customTemplates, settings.monthlyNotes.templateId)
+    if (template) {
+      await get().createFromTemplate(template, { folder: 'inbox', subpath, title, date })
+      return
+    }
+    await get().createAndOpen('inbox', subpath, { title })
+  },
+
+  openThisMonthMonthlyNote: async () => {
+    await get().openMonthlyNoteForDate(new Date())
   },
 
   setTemplatePaletteOpen: (open) =>

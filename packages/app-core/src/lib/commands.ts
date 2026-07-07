@@ -139,6 +139,15 @@ export function buildCommands(options?: { includeUnavailable?: boolean }): Comma
       run: () => getState().openThisWeekWeeklyNote()
     },
     {
+      id: 'note.monthly.thisMonth',
+      title: "Open This Month's Note",
+      category: 'Note',
+      keywords: 'monthly month review reflection date log',
+      shortcut: leaderShortcut('vim.leaderMonthlyNote'),
+      when: () => getState().vaultSettings.monthlyNotes.enabled,
+      run: () => getState().openThisMonthMonthlyNote()
+    },
+    {
       id: 'template.create',
       title: 'New Note from Template…',
       category: 'Note',

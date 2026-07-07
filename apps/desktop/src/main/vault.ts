@@ -18,6 +18,9 @@ import {
   DEFAULT_WEEKLY_NOTE_LOCALE,
   DEFAULT_WEEKLY_NOTE_TITLE_PATTERN,
   DEFAULT_WEEKLY_NOTES_DIRECTORY,
+  DEFAULT_MONTHLY_NOTE_LOCALE,
+  DEFAULT_MONTHLY_NOTE_TITLE_PATTERN,
+  DEFAULT_MONTHLY_NOTES_DIRECTORY,
   AssetMeta,
   DeletedAsset,
   type FolderIconId,
@@ -204,6 +207,12 @@ const DEFAULT_VAULT_SETTINGS: VaultSettings = {
     directory: DEFAULT_WEEKLY_NOTES_DIRECTORY,
     titlePattern: DEFAULT_WEEKLY_NOTE_TITLE_PATTERN,
     locale: DEFAULT_WEEKLY_NOTE_LOCALE
+  },
+  monthlyNotes: {
+    enabled: false,
+    directory: DEFAULT_MONTHLY_NOTES_DIRECTORY,
+    titlePattern: DEFAULT_MONTHLY_NOTE_TITLE_PATTERN,
+    locale: DEFAULT_MONTHLY_NOTE_LOCALE
   },
   folderIcons: {},
   folderColors: {},
@@ -761,6 +770,14 @@ function cloneVaultSettings(settings: VaultSettings): VaultSettings {
       legacyPatterns: settings.weeklyNotes.legacyPatterns?.map((pattern) => ({ ...pattern })),
       templateId: settings.weeklyNotes.templateId
     },
+    monthlyNotes: {
+      enabled: settings.monthlyNotes.enabled,
+      directory: settings.monthlyNotes.directory,
+      titlePattern: settings.monthlyNotes.titlePattern,
+      locale: settings.monthlyNotes.locale,
+      legacyPatterns: settings.monthlyNotes.legacyPatterns?.map((pattern) => ({ ...pattern })),
+      templateId: settings.monthlyNotes.templateId
+    },
     folderIcons: { ...settings.folderIcons },
     folderColors: { ...settings.folderColors },
     favorites: [...settings.favorites],
@@ -814,6 +831,24 @@ function normalizeWeeklyNotesDirectory(value: unknown): string {
   return trimmed || DEFAULT_WEEKLY_NOTES_DIRECTORY
 }
 
+function normalizeMonthlyNoteTitlePattern(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_MONTHLY_NOTE_TITLE_PATTERN
+  const trimmed = value.trim().replace(/[\\/]+/g, '-')
+  return trimmed || DEFAULT_MONTHLY_NOTE_TITLE_PATTERN
+}
+
+function normalizeMonthlyNoteLocale(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_MONTHLY_NOTE_LOCALE
+  const trimmed = value.trim()
+  return trimmed || DEFAULT_MONTHLY_NOTE_LOCALE
+}
+
+function normalizeMonthlyNotesDirectory(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_MONTHLY_NOTES_DIRECTORY
+  const trimmed = value.trim().replace(/^\/+|\/+$/g, '')
+  return trimmed || DEFAULT_MONTHLY_NOTES_DIRECTORY
+}
+
 function normalizeTemplateId(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
@@ -860,6 +895,28 @@ function normalizeWeeklyNoteLegacyPatterns(value: unknown): VaultSettings['weekl
   return out
 }
 
+function normalizeMonthlyNoteLegacyPatterns(
+  value: unknown
+): VaultSettings['monthlyNotes']['legacyPatterns'] {
+  if (!Array.isArray(value)) return []
+  const out: NonNullable<VaultSettings['monthlyNotes']['legacyPatterns']> = []
+  const seen = new Set<string>()
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue
+    const pattern = item as { directory?: unknown; titlePattern?: unknown; locale?: unknown }
+    const next = {
+      directory: normalizeMonthlyNotesDirectory(pattern.directory),
+      titlePattern: normalizeMonthlyNoteTitlePattern(pattern.titlePattern),
+      locale: normalizeMonthlyNoteLocale(pattern.locale)
+    }
+    const key = `${next.directory}\0${next.titlePattern}\0${next.locale}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(next)
+  }
+  return out
+}
+
 function normalizePrimaryNotesLocation(value: unknown): PrimaryNotesLocation {
   return value === 'root' ? 'root' : 'inbox'
 }
@@ -885,6 +942,12 @@ function normalizeVaultSettings(
         titlePattern: DEFAULT_WEEKLY_NOTE_TITLE_PATTERN,
         locale: DEFAULT_WEEKLY_NOTE_LOCALE
       },
+      monthlyNotes: {
+        enabled: DEFAULT_VAULT_SETTINGS.monthlyNotes.enabled,
+        directory: DEFAULT_MONTHLY_NOTES_DIRECTORY,
+        titlePattern: DEFAULT_MONTHLY_NOTE_TITLE_PATTERN,
+        locale: DEFAULT_MONTHLY_NOTE_LOCALE
+      },
       folderIcons: {},
       folderColors: {},
       favorites: []
@@ -903,6 +966,14 @@ function normalizeVaultSettings(
       rolloverUnfinishedTasks?: unknown
     } | null
     weeklyNotes?: {
+      enabled?: unknown
+      directory?: unknown
+      titlePattern?: unknown
+      locale?: unknown
+      legacyPatterns?: unknown
+      templateId?: unknown
+    } | null
+    monthlyNotes?: {
       enabled?: unknown
       directory?: unknown
       titlePattern?: unknown
@@ -949,6 +1020,17 @@ function normalizeVaultSettings(
       locale: normalizeWeeklyNoteLocale(candidate.weeklyNotes?.locale),
       legacyPatterns: normalizeWeeklyNoteLegacyPatterns(candidate.weeklyNotes?.legacyPatterns),
       templateId: normalizeTemplateId(candidate.weeklyNotes?.templateId)
+    },
+    monthlyNotes: {
+      enabled:
+        typeof candidate.monthlyNotes?.enabled === 'boolean'
+          ? candidate.monthlyNotes.enabled
+          : DEFAULT_VAULT_SETTINGS.monthlyNotes.enabled,
+      directory: normalizeMonthlyNotesDirectory(candidate.monthlyNotes?.directory),
+      titlePattern: normalizeMonthlyNoteTitlePattern(candidate.monthlyNotes?.titlePattern),
+      locale: normalizeMonthlyNoteLocale(candidate.monthlyNotes?.locale),
+      legacyPatterns: normalizeMonthlyNoteLegacyPatterns(candidate.monthlyNotes?.legacyPatterns),
+      templateId: normalizeTemplateId(candidate.monthlyNotes?.templateId)
     },
     folderIcons,
     folderColors: normalizeFolderColors(candidate.folderColors),
