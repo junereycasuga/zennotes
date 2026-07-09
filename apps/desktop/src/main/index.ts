@@ -3523,10 +3523,17 @@ app.whenReady().then(async () => {
   //   - clipboard read/write → copy buttons and vim's "+y / "+p registers
   //     (without this, navigator.clipboard throws NotAllowedError, which on
   //     macOS and Wayland broke yank/paste to the system clipboard — #79)
+  //   - 'fileSystem'    → the File System Access API (showSaveFilePicker +
+  //     createWritable) behind Excalidraw's "Export image → Save to disk". The
+  //     native picker shows regardless, but the *write* is gated on this
+  //     permission check; denying it made every PNG/SVG drawing export fail
+  //     right after the save dialog with a filesystem write error (#355). The
+  //     path is user-initiated and user-picked, so granting it is safe.
   const GRANTED_PERMISSIONS = new Set<string>([
     'local-fonts',
     'clipboard-read',
-    'clipboard-sanitized-write'
+    'clipboard-sanitized-write',
+    'fileSystem'
   ])
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
     callback(GRANTED_PERMISSIONS.has(permission as string))
