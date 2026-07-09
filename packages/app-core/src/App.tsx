@@ -305,6 +305,29 @@ function App(): JSX.Element {
     return scheduleEditorModuleWarmup()
   }, [vault])
 
+  // When a full-surface panel (Tasks/Tags) closes, the store asks the editor to
+  // reclaim keyboard focus so the reopened note takes typing without a manual
+  // pane jump or mouse click. Routed through a DOM event to keep the store free
+  // of an editor-focus import cycle. (#353)
+  useEffect(() => {
+    const handler = (): void => focusEditorNormalMode({ attempts: 10, delayMs: 24 })
+    window.addEventListener('zen:focus-editor', handler)
+    return () => window.removeEventListener('zen:focus-editor', handler)
+  }, [])
+
+  // Closing the sidebar while it holds keyboard focus (⌘1, Leader E, etc.) used
+  // to strand focus on the now-hidden pane; hand it back to the editor. Only
+  // fires on the open→closed transition when the sidebar was the focused panel,
+  // so hiding it mid-edit never steals focus from the editor. (#353)
+  const prevSidebarOpenRef = useRef(sidebarOpen)
+  useEffect(() => {
+    const wasOpen = prevSidebarOpenRef.current
+    prevSidebarOpenRef.current = sidebarOpen
+    if (wasOpen && !sidebarOpen && useStore.getState().focusedPanel === 'sidebar') {
+      focusEditorNormalMode({ attempts: 10, delayMs: 24 })
+    }
+  }, [sidebarOpen])
+
   useEffect(() => {
     const raf = window.requestAnimationFrame(() => {
       recordRendererPerf('renderer.app.mounted', performance.now() - mountedAtRef.current)

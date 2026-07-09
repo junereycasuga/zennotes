@@ -179,6 +179,15 @@ export type CommandPaletteInitialMode = 'main' | 'vault'
 
 const PREFS_KEY = 'zen:prefs:v2'
 const WORKSPACE_KEY = 'zen:workspace:v1'
+
+/** Ask the active editor pane to reclaim keyboard focus. Dispatched as a DOM
+ *  event (handled in App.tsx via `focusEditorNormalMode`) so the store doesn't
+ *  have to import editor-focus, which imports the store. Used when a focused
+ *  panel (Tasks/Tags) closes so typing lands in the editor again. (#353) */
+function requestEditorFocus(): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new Event('zen:focus-editor'))
+}
 /** Debounce for mirroring the workspace snapshot to the synced vault file —
  *  localStorage updates immediately; the file lags to bound sync churn. (#292) */
 const WORKSPACE_FILE_DEBOUNCE_MS = 1500
@@ -3707,6 +3716,9 @@ export const useStore = create<Store>((set, get) => {
       }
     }
     set({ tasksFilter: '', taskCursorIndex: 0 })
+    // The Tasks panel held keyboard focus; hand it back to the editor so the
+    // reopened note takes typing immediately, without a pane jump or click. (#353)
+    requestEditorFocus()
   },
 
   openTagView: async (tag) => {
@@ -3740,6 +3752,8 @@ export const useStore = create<Store>((set, get) => {
       }
     }
     set({ selectedTags: [] })
+    // Same as closeTasksView: return keyboard focus to the editor pane. (#353)
+    requestEditorFocus()
   },
 
   openHelpView: async () => {
