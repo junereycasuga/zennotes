@@ -351,8 +351,8 @@ interface Prefs {
   /** Key sequence that exits insert mode (maps to <Esc>), e.g. "jk".
    *  Empty disables it. */
   vimInsertEscape: string
-  /** When true, Vim yank/delete/change also copy to the system clipboard
-   *  (like `set clipboard=unnamed`). */
+  /** When true, Vim yank/delete/change also copy to the system clipboard and
+   *  `p` / `P` paste from it (like `set clipboard=unnamed`). */
   vimYankToClipboard: boolean
   keymapOverrides: KeymapOverrides
   /** Enabled CSS overrides, keyed by filename (e.g. `"focus.css": "on"`). Persisted. */

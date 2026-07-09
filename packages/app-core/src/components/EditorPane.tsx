@@ -57,7 +57,11 @@ import { completionNavKeymap } from '../lib/cm-completion-nav'
 import { vimAwareDefaultKeymap, vimAwareMarkdownKeymap } from '../lib/cm-vim-default-keymap'
 import { scrollOff } from '../lib/cm-scrolloff'
 import { offerCreateNoteFromLink } from '../lib/create-note-from-link'
-import { setYankToClipboardEnabled } from '../lib/cm-vim-clipboard'
+import {
+  setYankToClipboardEnabled,
+  setPasteFromClipboardEnabled,
+  vimClipboardPasteExtension,
+} from '../lib/cm-vim-clipboard'
 import { wireYankHighlight, yankHighlightExtension } from '../lib/cm-yank-highlight'
 import { frontmatterStyle } from '../lib/cm-frontmatter'
 import { codeBlockFontPlugin } from '../lib/cm-code-block-font'
@@ -905,10 +909,12 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
   }, [isActive, toggleConnectionsPanel])
 
   // Mirror `set clipboard=unnamed`: when enabled, Vim yank/delete/change also
-  // copy to the system clipboard. The patch is global, so any pane can drive it.
-  // Also install the highlight-on-yank handler (idempotent). (#144)
+  // copy to the system clipboard, and `p` / `P` paste from it. The patch is
+  // global, so any pane can drive it. Also install the highlight-on-yank
+  // handler (idempotent). (#144, #357)
   useEffect(() => {
     setYankToClipboardEnabled(vimYankToClipboard)
+    setPasteFromClipboardEnabled(vimYankToClipboard)
     wireYankHighlight()
   }, [vimYankToClipboard])
 
@@ -1487,6 +1493,7 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
           highlightActiveLine(),
           taskJumpHighlightField,
           yankHighlightExtension,
+          vimClipboardPasteExtension,
           commentDecorationField,
           wordWrapCompartment.of(s0.wordWrap ? EditorView.lineWrapping : []),
           scrolloffCompartment.of(scrollOff(s0.editorScrollOff)),

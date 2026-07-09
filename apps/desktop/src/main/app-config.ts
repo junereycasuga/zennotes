@@ -53,7 +53,7 @@ const SCALAR_FIELDS: Partial<Record<PortablePrefKey, ScalarFieldMap>> = {
   vimYankToClipboard: {
     section: 'vim',
     tomlKey: 'yank_to_clipboard',
-    comment: 'also copy Vim yank/delete/change to the system clipboard'
+    comment: 'sync the system clipboard with Vim yank/delete/change and p/P paste'
   },
   whichKeyHints: {
     section: 'vim',

@@ -1838,8 +1838,8 @@ export function SettingsModal(): JSX.Element {
                       onChange={(next) => setVimInsertEscape(next ?? "")}
                     />
                     <ToggleRow
-                      label="Yank to system clipboard"
-                      description="Copy yanked, deleted, and changed text to the system clipboard (like Vim's clipboard=unnamed), so y/d/c/x are available to paste in other apps."
+                      label="Sync clipboard with Vim registers"
+                      description="Copy yanked, deleted, and changed text to the system clipboard, and paste from it with p / P (like Vim's clipboard=unnamed), so y/d/c/x/p work across apps."
                       value={vimYankToClipboard}
                       settingId="vim-yank-to-clipboard"
                       onChange={setVimYankToClipboard}
