@@ -35,6 +35,11 @@
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.13.1" date="2026-07-10">
+      <description>
+        <p>Packaging-only patch: adds a native .rpm for Fedora, RHEL, and openSUSE (x64 and arm64) alongside the existing package formats. No application changes since 2.13.0.</p>
+      </description>
+    </release>
     <release version="2.13.0" date="2026-07-10">
       <description>
         <p>Inline Excalidraw drawing embeds (![[drawing.excalidraw]]), a choice of where new drawings and databases are created, a confirmation toast after exporting a note to PDF, a toggle for a solid non-blinking cursor, and the Kanagawa Paper Ink theme, plus fixes for Excalidraw following custom themes, strikethrough crossing out math, editor focus when opening daily notes, and calendar task-list sync.</p>
