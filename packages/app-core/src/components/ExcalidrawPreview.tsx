@@ -1,0 +1,78 @@
+import { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
+import { getExcalidrawPreview } from '../lib/excalidraw-preview'
+import { useStore } from '../store'
+
+export interface ExcalidrawPreviewProps {
+  path: string
+  width?: number
+  height?: number
+  className?: string
+  onClick?: () => void
+}
+
+/**
+ * Renders an Excalidraw drawing as a PNG image (exported @2x). Used both by
+ * the editor live-preview widget and the preview-pane hydration to show a
+ * drawing as an image-like embed inside a note. Re-renders when the vault
+ * watcher bumps `excalidrawPreviewVersion`.
+ */
+export function ExcalidrawPreview({
+  path,
+  width,
+  height,
+  className,
+  onClick
+}: ExcalidrawPreviewProps): JSX.Element {
+  const [src, setSrc] = useState<string | null>(null)
+  const version = useStore((s) => s.excalidrawPreviewVersion)
+
+  useEffect(() => {
+    let cancelled = false
+    setSrc(null)
+    void getExcalidrawPreview(path).then((url) => {
+      if (!cancelled) setSrc(url)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [path, version])
+
+  const style: CSSProperties = {}
+  if (width) style.maxWidth = `${width}px`
+  if (height) style.maxHeight = `${height}px`
+
+  if (!src) {
+    return (
+      <div
+        className={`excalidraw-embed-loading${className ? ' ' + className : ''}`}
+        style={style}
+        aria-label="Loading drawing preview"
+      />
+    )
+  }
+
+  return (
+    <img
+      src={src}
+      className={`excalidraw-embed-image${className ? ' ' + className : ''}`}
+      style={style}
+      alt=""
+      loading="lazy"
+      draggable={false}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+    />
+  )
+}
