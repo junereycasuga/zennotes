@@ -5858,6 +5858,11 @@ export const useStore = create<Store>((set, get) => {
         await get().createAndOpen('inbox', subpath, { title })
       }
     }
+    // Land keyboard focus in the editor so `i` starts insert straight away,
+    // instead of leaving focus on the sidebar item that just got selected. The
+    // command is a jump-and-type flow and is often fired from outside the
+    // editor (leader key, palette), where focus would otherwise stay put. (#353)
+    requestEditorFocus()
     // Opening *today's* note rolls unfinished tasks forward from past daily
     // notes (Obsidian-style) when enabled. Fire-and-forget so the note shows
     // right away; the rollover appends into the now-open buffer.
@@ -6032,14 +6037,16 @@ export const useStore = create<Store>((set, get) => {
     if (existing) {
       set({ view: { kind: 'folder', folder: 'inbox', subpath } })
       await get().selectNote(existing.path)
-      return
+    } else {
+      const template = resolveTemplate(state.customTemplates, settings.weeklyNotes.templateId)
+      if (template) {
+        await get().createFromTemplate(template, { folder: 'inbox', subpath, title, date })
+      } else {
+        await get().createAndOpen('inbox', subpath, { title })
+      }
     }
-    const template = resolveTemplate(state.customTemplates, settings.weeklyNotes.templateId)
-    if (template) {
-      await get().createFromTemplate(template, { folder: 'inbox', subpath, title, date })
-      return
-    }
-    await get().createAndOpen('inbox', subpath, { title })
+    // Focus the editor so `i` starts insert immediately (see openDailyNoteForDate).
+    requestEditorFocus()
   },
 
   openThisWeekWeeklyNote: async () => {
@@ -6055,14 +6062,16 @@ export const useStore = create<Store>((set, get) => {
     if (existing) {
       set({ view: { kind: 'folder', folder: 'inbox', subpath } })
       await get().selectNote(existing.path)
-      return
+    } else {
+      const template = resolveTemplate(state.customTemplates, settings.monthlyNotes.templateId)
+      if (template) {
+        await get().createFromTemplate(template, { folder: 'inbox', subpath, title, date })
+      } else {
+        await get().createAndOpen('inbox', subpath, { title })
+      }
     }
-    const template = resolveTemplate(state.customTemplates, settings.monthlyNotes.templateId)
-    if (template) {
-      await get().createFromTemplate(template, { folder: 'inbox', subpath, title, date })
-      return
-    }
-    await get().createAndOpen('inbox', subpath, { title })
+    // Focus the editor so `i` starts insert immediately (see openDailyNoteForDate).
+    requestEditorFocus()
   },
 
   openThisMonthMonthlyNote: async () => {
