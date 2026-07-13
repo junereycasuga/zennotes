@@ -379,13 +379,23 @@ export function VimNav(): JSX.Element | null {
       ) {
         return
       }
-      // #285: when focus is inside the calendar panel, stand down entirely — it
-      // owns its keys (h/j/k/l + arrows for day navigation, Escape to leave) via
-      // its own focus-gated capture handler. Without this the pane-nav/leader
-      // routing below would hijack the arrows. We don't consume the event, so
-      // the panel's handler (and any global app shortcut) still sees it.
+      // #285: when focus is inside the calendar panel, stand down so it owns its
+      // keys (h/j/k/l + arrows for day navigation, Escape to leave) via its own
+      // focus-gated capture handler. We don't consume the event, so the panel's
+      // handler (and any global app shortcut) still sees it.
+      // #374: EXCEPT the pane prefix (Ctrl+W) and its pending direction — mirror
+      // the database-grid hand-off above — so Vim pane navigation still works
+      // from the calendar (Ctrl+W h/j/k/l) instead of forcing a mouse click.
       const calendarPanelEl = document.querySelector('[data-calendar-panel]')
-      if (calendarPanelEl && target && calendarPanelEl.contains(target)) return
+      if (
+        calendarPanelEl &&
+        target &&
+        calendarPanelEl.contains(target) &&
+        !ctrlWPending.current &&
+        sequenceTokenFromEvent(e) !== panePrefixToken
+      ) {
+        return
+      }
       // #309: In an Excalidraw canvas, hold-Space pans (the Hand tool). Don't
       // swallow the Space keydown as the leader — let it reach Excalidraw so
       // panning works, and arm the leader only on a quick TAP (see the keyup
