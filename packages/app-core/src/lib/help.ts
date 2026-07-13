@@ -250,6 +250,11 @@ export const HELP_CORE_CONCEPTS: HelpCard[] = [
       'Forwarding moves a task to a different note while leaving a record behind — the bullet-journal “migrate” gesture. Type `>` inside a task’s checkbox (turning `- [ ]` into `- [>]`) to open a note picker, run “Forward Task to Note…” from the command palette with the cursor on a task, or press `>` on a task in the Tasks list. The original stays as `- [>] … [[Target]]` (a forwarded marker linking to where it went), and a fresh `- [ ] … [[Source]]` copy is added to the note you pick, backlinked home. Forwarded tasks collect under their own “Forwarded” group in the Tasks list, kept out of Today and Done.'
   },
   {
+    title: 'Style completed tasks',
+    body:
+      'By default, checking a task (`- [x]`) just fills its checkbox. Settings → Editor → Completed task style can also dim the text, strike it through, or both, so finished items visually recede in the editor and reading view while the checkbox stays checked. The command palette has direct entries (“Completed Tasks: Strikethrough”, “Gray”, “Strikethrough + Gray”, “No Style”). Nested sub-tasks keep their own state, so a completed parent never strikes an unchecked child.'
+  },
+  {
     title: 'Moving notes is path-first',
     body:
       'Use the note context menu, search `move` or `mv` in the command palette, or run `:move` / `:mv` from the ex line to move the active note into Inbox or Archive. With no argument, the command opens the folder picker; with a target like `:mv archive/Reference` or `:move inbox/Work`, it moves the note directly. The move prompt autocompletes folder paths, so you can type and Tab through existing destinations instead of dragging.'

@@ -844,6 +844,36 @@ export const Preview = memo(function Preview({
         input.dataset.taskIndex = String(idx);
         input.setAttribute("role", "checkbox");
         input.classList.add("cursor-pointer");
+        // Tag the item with its OWN checked state and wrap its inline text in a
+        // span, so the completed-task styling (strike/gray) targets just this
+        // line and never bleeds onto nested sub-tasks. Loose items keep their
+        // <p>, which the CSS targets directly; only bare-text (tight) items get
+        // the wrapper.
+        const li = input.closest<HTMLLIElement>("li.task-list-item");
+        if (li) {
+          li.classList.toggle("task-self-done", input.checked);
+          if (!li.querySelector(":scope > .task-item-body")) {
+            const own = Array.from(li.childNodes).filter((node) => {
+              if (node === input) return false;
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                const tag = (node as Element).tagName;
+                if (tag === "UL" || tag === "OL" || tag === "P") return false;
+              }
+              return true;
+            });
+            const hasText = own.some(
+              (node) =>
+                node.nodeType !== Node.TEXT_NODE ||
+                (node.textContent ?? "").trim() !== "",
+            );
+            if (hasText && own.length > 0) {
+              const body = document.createElement("span");
+              body.className = "task-item-body";
+              li.insertBefore(body, own[0]);
+              for (const node of own) body.appendChild(node);
+            }
+          }
+        }
       });
 
     const applyRenderedDom = async (): Promise<void> => {

@@ -83,6 +83,7 @@ import {
   pickPortablePrefs,
   defaultTimeFormat,
   type AppConfigPortable,
+  type CompletedTaskStyle,
   type TimeFormat
 } from '@shared/app-config'
 import {
@@ -386,6 +387,9 @@ interface Prefs {
   /** Render Markdown tables as interactive WYSIWYG widgets in live preview.
    *  Off keeps tables as plain editable markdown — full keyboard/Vim editing. */
   renderTablesInLivePreview: boolean
+  /** How a completed task's text is styled (strike / gray / both / none) in the
+   *  editor and preview. Applied via `html[data-completed-task-style]`. */
+  completedTaskStyle: CompletedTaskStyle
   /** Auto-close markdown delimiters while typing: `**`+Space → `**|**`,
    *  ```` ``` ````+Enter expands a fenced block. Off restores plain typing. */
   markdownSnippets: boolean
@@ -671,6 +675,7 @@ export const DEFAULT_PREFS: Prefs = {
   fzfBinaryPath: null,
   livePreview: true,
   renderTablesInLivePreview: true,
+  completedTaskStyle: 'none',
   markdownSnippets: true,
   hideBuiltinTemplates: false,
   tabsEnabled: true,
@@ -789,6 +794,13 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
       typeof p.renderTablesInLivePreview === 'boolean'
         ? p.renderTablesInLivePreview
         : DEFAULT_PREFS.renderTablesInLivePreview,
+    completedTaskStyle:
+      p.completedTaskStyle === 'strikethrough' ||
+      p.completedTaskStyle === 'gray' ||
+      p.completedTaskStyle === 'gray-strikethrough' ||
+      p.completedTaskStyle === 'none'
+        ? p.completedTaskStyle
+        : DEFAULT_PREFS.completedTaskStyle,
     markdownSnippets:
       typeof p.markdownSnippets === 'boolean'
         ? p.markdownSnippets
@@ -1550,6 +1562,7 @@ function collectPrefs(s: {
   fzfBinaryPath: string | null
   livePreview: boolean
   renderTablesInLivePreview: boolean
+  completedTaskStyle: CompletedTaskStyle
   markdownSnippets: boolean
   hideBuiltinTemplates: boolean
   tabsEnabled: boolean
@@ -1619,6 +1632,7 @@ function collectPrefs(s: {
     fzfBinaryPath: s.fzfBinaryPath,
     livePreview: s.livePreview,
     renderTablesInLivePreview: s.renderTablesInLivePreview,
+    completedTaskStyle: s.completedTaskStyle,
     markdownSnippets: s.markdownSnippets,
     hideBuiltinTemplates: s.hideBuiltinTemplates,
     tabsEnabled: s.tabsEnabled,
@@ -2066,6 +2080,7 @@ interface Store {
   fzfBinaryPath: string | null
   livePreview: boolean
   renderTablesInLivePreview: boolean
+  completedTaskStyle: CompletedTaskStyle
   /** Auto-close markdown delimiters while typing. Persisted. */
   markdownSnippets: boolean
   hideBuiltinTemplates: boolean
@@ -2425,6 +2440,7 @@ interface Store {
   setFzfBinaryPath: (path: string | null) => void
   setLivePreview: (on: boolean) => void
   setRenderTablesInLivePreview: (on: boolean) => void
+  setCompletedTaskStyle: (style: CompletedTaskStyle) => void
   setMarkdownSnippets: (on: boolean) => void
   setHideBuiltinTemplates: (hidden: boolean) => void
   setTabsEnabled: (on: boolean) => void
@@ -3570,6 +3586,7 @@ export const useStore = create<Store>((set, get) => {
   fzfBinaryPath: loadPrefs().fzfBinaryPath,
   livePreview: loadPrefs().livePreview,
   renderTablesInLivePreview: loadPrefs().renderTablesInLivePreview,
+  completedTaskStyle: loadPrefs().completedTaskStyle,
   markdownSnippets: loadPrefs().markdownSnippets,
   hideBuiltinTemplates: loadPrefs().hideBuiltinTemplates,
   tabsEnabled: loadPrefs().tabsEnabled,
@@ -5484,6 +5501,10 @@ export const useStore = create<Store>((set, get) => {
   },
   setRenderTablesInLivePreview: (on) => {
     set({ renderTablesInLivePreview: on })
+    savePrefs(collectPrefs(get()))
+  },
+  setCompletedTaskStyle: (style) => {
+    set({ completedTaskStyle: style })
     savePrefs(collectPrefs(get()))
   },
   setMarkdownSnippets: (on) => {

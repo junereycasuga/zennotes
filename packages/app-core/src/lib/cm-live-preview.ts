@@ -55,6 +55,9 @@ const PREFIX_HIDE_WITH_SPACE = new Set(['HeaderMark', 'QuoteMark'])
 
 const hide = Decoration.replace({})
 const imageSourceHide = Decoration.replace({})
+// Marks the text of a completed task (`- [x] …`) so CSS can strike/gray it,
+// gated by the `data-completed-task-style` setting on the document root.
+const taskDoneMark = Decoration.mark({ class: 'cm-task-done' })
 // Stamped on an image line only while its raw source is hidden, so the host
 // line stops reserving a blank text row above/below the block figure (#261).
 const imageEmbedLine = Decoration.line({ class: 'cm-image-embed-line' })
@@ -939,19 +942,26 @@ function computeDecorations(view: EditorView): DecorationSet {
         const isLinkSyntax = name === 'LinkMark' || isUrl
 
         if (name === TASK_MARKER_NODE) {
-          const line = state.doc.lineAt(node.from).number
+          const lineObj = state.doc.lineAt(node.from)
+          const line = lineObj.number
           if (replacedLines.has(line)) return
-          // Reveal the raw `[ ]` / `[x]` on the active line so the whole task
-          // line reads as source — matching Obsidian, and consistent with the
-          // list/quote/heading markers, which also reveal on the active line.
-          // Off the line, render the checkbox.
-          if (activeLines.has(line)) return
           const markerText = state.doc.sliceString(node.from, node.to)
           // `markerText` is `[ ]` / `[x]` / `[X]` / `[>]`; default to unchecked if
           // the parser ever hands us something unexpected.
           const stateChar = markerText[1] ?? ''
           const checked = markerText.length >= 2 && /[xX]/.test(stateChar)
           const forwarded = stateChar === '>'
+          // Mark a completed task's text so CSS can strike/gray it (gated by the
+          // `completedTaskStyle` setting). Applied on the active line too, so it
+          // doesn't flip as the cursor moves; the checkbox itself is untouched.
+          if (checked && lineObj.to > node.to) {
+            pending.push({ from: node.to, to: lineObj.to, deco: taskDoneMark })
+          }
+          // Reveal the raw `[ ]` / `[x]` on the active line so the whole task
+          // line reads as source — matching Obsidian, and consistent with the
+          // list/quote/heading markers, which also reveal on the active line.
+          // Off the line, render the checkbox.
+          if (activeLines.has(line)) return
           pending.push({
             from: node.from,
             to: node.to,

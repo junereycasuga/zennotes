@@ -291,6 +291,7 @@ function App(): JSX.Element {
   const previewMaxWidth = useStore((s) => s.previewMaxWidth)
   const editorMaxWidth = useStore((s) => s.editorMaxWidth)
   const contentAlign = useStore((s) => s.contentAlign)
+  const completedTaskStyle = useStore((s) => s.completedTaskStyle)
   const lineNumberPosition = useStore((s) => s.lineNumberPosition)
   const interfaceFont = useStore((s) => s.interfaceFont)
   const textFont = useStore((s) => s.textFont)
@@ -510,6 +511,7 @@ function App(): JSX.Element {
     html.style.setProperty('--z-preview-max-width', `${previewMaxWidth}px`)
     html.style.setProperty('--z-editor-max-width', `${editorMaxWidth}px`)
     html.dataset.contentAlign = contentAlign
+    html.dataset.completedTaskStyle = completedTaskStyle
     html.dataset.lineNumberPosition = lineNumberPosition
 
     const setFont = (name: string, value: string | null, fallback: string): void => {
@@ -531,7 +533,7 @@ function App(): JSX.Element {
       monoFont,
       '"SF Mono", "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace'
     )
-  }, [editorFontSize, editorLineHeight, previewMaxWidth, editorMaxWidth, contentAlign, lineNumberPosition, interfaceFont, textFont, monoFont])
+  }, [editorFontSize, editorLineHeight, previewMaxWidth, editorMaxWidth, contentAlign, completedTaskStyle, lineNumberPosition, interfaceFont, textFont, monoFont])
 
   // The app now always runs fully opaque.
   useEffect(() => {

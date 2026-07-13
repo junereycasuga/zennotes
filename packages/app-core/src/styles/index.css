@@ -1821,6 +1821,21 @@ textarea,
   outline-offset: 2px;
 }
 
+/* --- Completed task text (live preview) ------------------------------- */
+/* `.cm-task-done` marks the text of a checked `- [x]` item; the setting is
+   mirrored onto `html[data-completed-task-style]`, so `none` (the default)
+   adds no rule and the task keeps its original look. The checkbox widget is a
+   separate element, so it is never struck or dimmed. */
+html[data-completed-task-style="strikethrough"] .cm-editor .cm-task-done,
+html[data-completed-task-style="gray-strikethrough"] .cm-editor .cm-task-done {
+  text-decoration: line-through;
+  text-decoration-color: rgb(var(--z-grey-0));
+}
+html[data-completed-task-style="gray"] .cm-editor .cm-task-done,
+html[data-completed-task-style="gray-strikethrough"] .cm-editor .cm-task-done {
+  color: rgb(var(--z-grey-0)) !important;
+}
+
 /* --- Search match highlights (`/` in vim, `Cmd+F`) -------------------- */
 /* The CodeMirror default uses a faint translucent yellow that disappears
    against the paper theme. Use the theme yellow so matches stay visible
@@ -2561,6 +2576,25 @@ textarea,
 .prose-zen li.task-list-item > ol {
   margin-top: 0;
   margin-bottom: 0;
+}
+/* Completed task text (reading view). Gated by html[data-completed-task-style]
+   (default `none` → no rule). `task-self-done` marks an item whose OWN checkbox
+   is checked, and the styling targets only that item's own text (`.task-item-body`
+   for tight items, `> p` for loose ones) — never the nested sub-list — so a
+   completed parent never strikes its unchecked sub-tasks. The checkbox keeps its
+   accent color. Both set in Preview.tsx after render. */
+html[data-completed-task-style="strikethrough"] .prose-zen li.task-list-item.task-self-done > .task-item-body,
+html[data-completed-task-style="strikethrough"] .prose-zen li.task-list-item.task-self-done > p,
+html[data-completed-task-style="gray-strikethrough"] .prose-zen li.task-list-item.task-self-done > .task-item-body,
+html[data-completed-task-style="gray-strikethrough"] .prose-zen li.task-list-item.task-self-done > p {
+  text-decoration: line-through;
+  text-decoration-color: rgb(var(--z-grey-0));
+}
+html[data-completed-task-style="gray"] .prose-zen li.task-list-item.task-self-done > .task-item-body,
+html[data-completed-task-style="gray"] .prose-zen li.task-list-item.task-self-done > p,
+html[data-completed-task-style="gray-strikethrough"] .prose-zen li.task-list-item.task-self-done > .task-item-body,
+html[data-completed-task-style="gray-strikethrough"] .prose-zen li.task-list-item.task-self-done > p {
+  color: rgb(var(--z-grey-0));
 }
 .prose-zen blockquote {
   margin: var(--z-prose-block-gap) 0;
@@ -3616,7 +3650,7 @@ textarea,
 }
 .vim-cursor {
   background: rgb(var(--z-accent) / 0.15);
-  color: rgb(var(--z-ink-900));
+  color: theme("colors.ink.900");
 }
 .vim-cursor-on-active {
   box-shadow: inset 0 0 0 2px rgb(var(--z-accent) / 0.65);
@@ -3725,8 +3759,8 @@ textarea,
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background: rgb(var(--z-paper-200));
-  color: rgb(var(--z-ink-700));
+  background: theme("colors.paper.200");
+  color: theme("colors.ink.700");
   font-size: 12px;
   font-weight: 700;
   font-family: var(--z-mono-font, "SF Mono", ui-monospace, monospace);
@@ -3737,12 +3771,12 @@ textarea,
   flex: 1;
   font-size: 14px;
   font-weight: 500;
-  color: rgb(var(--z-ink-900));
+  color: theme("colors.ink.900");
 }
 
 .slash-cmd-detail {
   font-size: 12px;
-  color: rgb(var(--z-ink-400));
+  color: theme("colors.ink.400");
   font-family: var(--z-mono-font, "SF Mono", ui-monospace, monospace);
 }
 
@@ -3768,7 +3802,7 @@ textarea,
   white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
-  color: rgb(var(--z-ink-900));
+  color: theme("colors.ink.900");
 }
 
 .wikilink-cmd-subtitle {
@@ -3776,7 +3810,7 @@ textarea,
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
-  color: rgb(var(--z-ink-400));
+  color: theme("colors.ink.400");
   font-family: var(--z-mono-font, "SF Mono", ui-monospace, monospace);
 }
 
@@ -3801,7 +3835,7 @@ textarea,
   font-size: 15px;
   line-height: 1;
   flex-shrink: 0;
-  background: rgb(var(--z-paper-200));
+  background: theme("colors.paper.200");
 }
 .callout-cmd-note {
   background: rgb(var(--z-blue) / 0.16);
@@ -3819,7 +3853,7 @@ textarea,
   background: rgb(var(--z-red) / 0.16);
 }
 .callout-cmd-quote {
-  background: rgb(var(--z-paper-200));
+  background: theme("colors.paper.200");
 }
 
 .callout-cmd-main {
@@ -3836,7 +3870,7 @@ textarea,
   white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
-  color: rgb(var(--z-ink-900));
+  color: theme("colors.ink.900");
 }
 
 .callout-cmd-desc {
@@ -3844,7 +3878,7 @@ textarea,
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
-  color: rgb(var(--z-ink-400));
+  color: theme("colors.ink.400");
 }
 
 /* --- Heading fold placeholder (CodeMirror) ------------------------- */
@@ -3960,7 +3994,7 @@ textarea,
   height: var(--z-heading-fold-arrow-size);
   font-size: var(--z-heading-fold-arrow-glyph-size);
   line-height: 1;
-  color: rgb(var(--z-ink-400));
+  color: theme("colors.ink.400");
   opacity: 0;
   cursor: pointer;
   user-select: none;
@@ -3977,7 +4011,7 @@ textarea,
   opacity: 1;
 }
 .cm-heading-fold-arrow:hover {
-  color: rgb(var(--z-ink-900));
+  color: theme("colors.ink.900");
   background: rgb(var(--z-bg-2));
 }
 .cm-heading-fold-arrow.is-folded {
@@ -4008,7 +4042,7 @@ textarea,
   height: var(--z-heading-fold-arrow-size);
   font-size: 16px;
   line-height: 1;
-  color: rgb(var(--z-ink-400));
+  color: theme("colors.ink.400");
   opacity: 0;
   cursor: pointer;
   user-select: none;
@@ -4024,7 +4058,7 @@ textarea,
   opacity: 1;
 }
 .prose-zen .prose-heading-fold-arrow:hover {
-  color: rgb(var(--z-ink-900));
+  color: theme("colors.ink.900");
   background: rgb(var(--z-bg-2));
 }
 .prose-zen .prose-heading-fold-arrow.is-folded {
