@@ -168,7 +168,15 @@ export default defineConfig({
       { find: '@renderer', replacement: resolve(__dirname, '../../packages/app-core/src') },
       { find: '@shared', replacement: resolve(__dirname, '../../packages/shared-domain/src') },
       { find: '@bridge-contract', replacement: resolve(__dirname, '../../packages/bridge-contract/src') }
-    ]
+    ],
+    // app-core is consumed as source (its `./main` export points at
+    // packages/app-core/src), so its bare `react` / `react-dom` imports live
+    // outside this app's Vite root and can resolve to a second React instance
+    // from the app's own optimized copy — "Invalid hook call: more than one
+    // copy of React". Pin every React import to the single hoisted copy.
+    // electron-vite applies this for the desktop renderer by default; plain
+    // Vite does not, so we set it explicitly to keep web and desktop in parity.
+    dedupe: ['react', 'react-dom']
   },
   server: {
     port: 5173,
