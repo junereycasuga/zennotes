@@ -3881,14 +3881,20 @@ export async function importFiles(
 
   const noteDir = path.posix.dirname(toPosix(noteRelPath))
   const imported: ImportedAsset[] = []
+  // Dropped files land in the unified `assets/` folder, matching pasted images
+  // (`importPastedImage`). They used to be copied to the vault root, which in
+  // Vault Root mode dumped them right next to your notes and was inconsistent
+  // with paste. (#377)
+  const assetsDir = path.join(root, ASSETS_DIR)
 
   for (const sourcePath of sourcePaths) {
     const sourceAbs = path.resolve(sourcePath)
     const stat = await fs.stat(sourceAbs)
     if (!stat.isFile()) continue
 
-    const finalName = await uniqueFilename(root, path.basename(sourceAbs))
-    const destAbs = path.join(root, finalName)
+    await fs.mkdir(assetsDir, { recursive: true })
+    const finalName = await uniqueFilename(assetsDir, path.basename(sourceAbs))
+    const destAbs = path.join(assetsDir, finalName)
     await fs.copyFile(sourceAbs, destAbs)
 
     const vaultRelPath = toPosix(path.relative(root, destAbs))

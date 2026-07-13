@@ -302,7 +302,7 @@ export const HELP_CORE_CONCEPTS: HelpCard[] = [
   {
     title: 'Files stay local',
     body:
-      'Drop files into a note to insert local files. By default, ZenNotes keeps them as ordinary files in the vault root, can reveal them from the app, and opens images, SVGs, PDFs, audio, video, and generic files inside ZenNotes tabs or reference panes where possible.'
+      'Drop files into a note to insert local files. ZenNotes copies them into the vault’s `assets/` folder — the same place pasted images land — so they stay together instead of cluttering your notes area, whether you keep notes in `inbox/` or at the vault root. It can reveal them from the app, and opens images, SVGs, PDFs, audio, video, and generic files inside ZenNotes tabs or reference panes where possible.'
   },
   {
     title: 'Any CSV is a database',
