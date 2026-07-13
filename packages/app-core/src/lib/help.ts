@@ -265,6 +265,11 @@ export const HELP_CORE_CONCEPTS: HelpCard[] = [
       'When you type `/` at the start of a line or after whitespace, ZenNotes opens an inline insert menu for common markdown structures such as headings, bulleted or numbered lists, to-do items, callouts, code blocks, dividers, tables, math blocks, links, images, and even creating a new note page.'
   },
   {
+    title: 'Callouts highlight the important bits',
+    body:
+      'Turn a blockquote into a colored callout (an Obsidian-style admonition) by starting its first line with `> [!type]`, optionally followed by a title: `> [!warning] Heads up`. Typing `[!` inside a blockquote opens an insert menu of the callout types — filter by name, move with the arrow keys (or Ctrl+N / Ctrl+P), and press Enter or Tab to drop in the syntax. The type sets the color: `note`, `info`, `abstract` / `summary` / `tldr` render blue; `tip` / `hint` / `important` and `success` / `check` / `done` green; `question` / `help` / `faq` and `example` purple; `warning` / `caution` / `attention` yellow; `danger` / `error`, `bug`, and `failure` / `fail` red; and `quote` / `cite` a neutral gray. Types are case-insensitive, and an unrecognized one still renders as a neutral note, so callouts pasted in from Obsidian keep working.'
+  },
+  {
     title: '@ inserts dates and links notes',
     body:
       'Typing `@` in normal text opens suggestions: the date shortcuts (Today, Yesterday, Tomorrow), the current time (Now — type `@time` or `@now`), plus any notes matching what you type. Choosing a date inserts an ISO date like `2026-04-15`; choosing Now inserts the current time in your configured 12-hour or 24-hour format (Settings → Editor → Time format); choosing a note inserts a `[[wikilink]]`, so `@` is a quick alternative to `[[`. A bare `@` leads with the dates and Now — start typing letters and matching notes appear.'

@@ -3324,40 +3324,81 @@ textarea,
   font-weight: 600;
   margin-bottom: 0.35em;
 }
+/* Callout color groups — the `data-callout` lists mirror the alias→group table
+   in `lib/callout-types.ts` (kept in sync by hand; CSS can't import it). */
 .prose-zen .callout[data-callout="note"],
-.prose-zen .callout[data-callout="info"] {
+.prose-zen .callout[data-callout="info"],
+.prose-zen .callout[data-callout="abstract"],
+.prose-zen .callout[data-callout="summary"],
+.prose-zen .callout[data-callout="tldr"] {
   border-color: rgb(var(--z-blue) / 0.35);
   background: rgb(var(--z-blue) / 0.08);
 }
 .prose-zen .callout[data-callout="note"] .callout-title,
-.prose-zen .callout[data-callout="info"] .callout-title {
+.prose-zen .callout[data-callout="info"] .callout-title,
+.prose-zen .callout[data-callout="abstract"] .callout-title,
+.prose-zen .callout[data-callout="summary"] .callout-title,
+.prose-zen .callout[data-callout="tldr"] .callout-title {
   color: rgb(var(--z-blue));
 }
 .prose-zen .callout[data-callout="tip"],
-.prose-zen .callout[data-callout="hint"] {
+.prose-zen .callout[data-callout="hint"],
+.prose-zen .callout[data-callout="important"],
+.prose-zen .callout[data-callout="success"],
+.prose-zen .callout[data-callout="check"],
+.prose-zen .callout[data-callout="done"] {
   border-color: rgb(var(--z-green) / 0.35);
   background: rgb(var(--z-green) / 0.08);
 }
 .prose-zen .callout[data-callout="tip"] .callout-title,
-.prose-zen .callout[data-callout="hint"] .callout-title {
+.prose-zen .callout[data-callout="hint"] .callout-title,
+.prose-zen .callout[data-callout="important"] .callout-title,
+.prose-zen .callout[data-callout="success"] .callout-title,
+.prose-zen .callout[data-callout="check"] .callout-title,
+.prose-zen .callout[data-callout="done"] .callout-title {
   color: rgb(var(--z-green));
 }
+.prose-zen .callout[data-callout="question"],
+.prose-zen .callout[data-callout="help"],
+.prose-zen .callout[data-callout="faq"],
+.prose-zen .callout[data-callout="example"] {
+  border-color: rgb(var(--z-purple) / 0.35);
+  background: rgb(var(--z-purple) / 0.08);
+}
+.prose-zen .callout[data-callout="question"] .callout-title,
+.prose-zen .callout[data-callout="help"] .callout-title,
+.prose-zen .callout[data-callout="faq"] .callout-title,
+.prose-zen .callout[data-callout="example"] .callout-title {
+  color: rgb(var(--z-purple));
+}
 .prose-zen .callout[data-callout="warning"],
-.prose-zen .callout[data-callout="warn"] {
+.prose-zen .callout[data-callout="warn"],
+.prose-zen .callout[data-callout="caution"],
+.prose-zen .callout[data-callout="attention"] {
   border-color: rgb(var(--z-yellow) / 0.4);
   background: rgb(var(--z-yellow) / 0.08);
 }
 .prose-zen .callout[data-callout="warning"] .callout-title,
-.prose-zen .callout[data-callout="warn"] .callout-title {
+.prose-zen .callout[data-callout="warn"] .callout-title,
+.prose-zen .callout[data-callout="caution"] .callout-title,
+.prose-zen .callout[data-callout="attention"] .callout-title {
   color: rgb(var(--z-yellow));
 }
 .prose-zen .callout[data-callout="danger"],
-.prose-zen .callout[data-callout="error"] {
+.prose-zen .callout[data-callout="error"],
+.prose-zen .callout[data-callout="bug"],
+.prose-zen .callout[data-callout="failure"],
+.prose-zen .callout[data-callout="fail"],
+.prose-zen .callout[data-callout="missing"] {
   border-color: rgb(var(--z-red) / 0.35);
   background: rgb(var(--z-red) / 0.08);
 }
 .prose-zen .callout[data-callout="danger"] .callout-title,
-.prose-zen .callout[data-callout="error"] .callout-title {
+.prose-zen .callout[data-callout="error"] .callout-title,
+.prose-zen .callout[data-callout="bug"] .callout-title,
+.prose-zen .callout[data-callout="failure"] .callout-title,
+.prose-zen .callout[data-callout="fail"] .callout-title,
+.prose-zen .callout[data-callout="missing"] .callout-title {
   color: rgb(var(--z-red));
 }
 
@@ -3737,6 +3778,73 @@ textarea,
   font-size: 12px;
   color: rgb(var(--z-ink-400));
   font-family: var(--z-mono-font, "SF Mono", ui-monospace, monospace);
+}
+
+/* Callout type insert menu (`[!` → pick a callout). Icon tile tinted per color
+ * group, with the type label above a short description. */
+.callout-cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 260px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.callout-cmd-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 15px;
+  line-height: 1;
+  flex-shrink: 0;
+  background: rgb(var(--z-paper-200));
+}
+.callout-cmd-note {
+  background: rgb(var(--z-blue) / 0.16);
+}
+.callout-cmd-tip {
+  background: rgb(var(--z-green) / 0.16);
+}
+.callout-cmd-question {
+  background: rgb(var(--z-purple) / 0.16);
+}
+.callout-cmd-warning {
+  background: rgb(var(--z-yellow) / 0.18);
+}
+.callout-cmd-danger {
+  background: rgb(var(--z-red) / 0.16);
+}
+.callout-cmd-quote {
+  background: rgb(var(--z-paper-200));
+}
+
+.callout-cmd-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.callout-cmd-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(var(--z-ink-900));
+}
+
+.callout-cmd-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: rgb(var(--z-ink-400));
 }
 
 /* --- Heading fold placeholder (CodeMirror) ------------------------- */
@@ -4359,6 +4467,9 @@ textarea,
 }
 .cm-wysiwyg .cm-editor .cm-callout-tip {
   --callout-color: var(--z-green);
+}
+.cm-wysiwyg .cm-editor .cm-callout-question {
+  --callout-color: var(--z-purple);
 }
 .cm-wysiwyg .cm-editor .cm-callout-warning {
   --callout-color: var(--z-yellow);

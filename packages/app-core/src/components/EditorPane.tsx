@@ -86,6 +86,7 @@ import { hashtagExtension } from '../lib/cm-hashtags'
 import { applyHighlight, HIGHLIGHT_COLORS, highlightExtension } from '../lib/cm-highlight'
 import { wikilinkRenderExtension } from '../lib/cm-wikilink-render'
 import { slashCommandSource, slashCommandRender } from '../lib/cm-slash-commands'
+import { calloutTypeSource } from '../lib/cm-callouts'
 import { dateShortcutSource } from '../lib/cm-date-shortcuts'
 import { wikilinkSource, wikilinkHeadingSource, atNoteSource } from '../lib/cm-wikilinks'
 import { resolveWikilinkTarget, wikilinkHeadingAnchor } from '../lib/wikilinks'
@@ -1517,6 +1518,7 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
           autocompletion({
             override: [
               slashCommandSource,
+              calloutTypeSource,
               dateShortcutSource,
               atNoteSource,
               wikilinkSource,
@@ -1524,10 +1526,12 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
             ],
             addToOptions: [{ render: slashCommandRender.render, position: 0 }],
             icons: false,
-            optionClass: (completion) =>
-              (completion as { _kind?: string })._kind === 'wikilink'
-                ? 'wikilink-cmd-option'
-                : 'slash-cmd-option'
+            optionClass: (completion) => {
+              const kind = (completion as { _kind?: string })._kind
+              if (kind === 'wikilink') return 'wikilink-cmd-option'
+              if (kind === 'callout') return 'callout-cmd-option'
+              return 'slash-cmd-option'
+            }
           }),
           completionNavKeymap,
           editorKeymapCompartment.of(buildEditorKeymap(s0.vimMode, s0.keymapOverrides)),

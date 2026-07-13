@@ -40,6 +40,7 @@ import type { LineNumberMode } from '../store'
 import { livePreviewPlugin } from '../lib/cm-live-preview'
 import { headingFolding } from '../lib/cm-heading-fold'
 import { slashCommandSource, slashCommandRender } from '../lib/cm-slash-commands'
+import { calloutTypeSource } from '../lib/cm-callouts'
 import { dateShortcutSource } from '../lib/cm-date-shortcuts'
 import { wikilinkSource, wikilinkHeadingSource } from '../lib/cm-wikilinks'
 import { completionNavKeymap } from '../lib/cm-completion-nav'
@@ -197,13 +198,21 @@ export function PinnedReferencePane(): JSX.Element | null {
           lineNumbersCompartment.of(lineNumberExtension(s0.lineNumberMode)),
           tooltips({ parent: document.body }),
           autocompletion({
-            override: [slashCommandSource, dateShortcutSource, wikilinkSource, wikilinkHeadingSource],
+            override: [
+              slashCommandSource,
+              calloutTypeSource,
+              dateShortcutSource,
+              wikilinkSource,
+              wikilinkHeadingSource
+            ],
             addToOptions: [{ render: slashCommandRender.render, position: 0 }],
             icons: false,
-            optionClass: (completion) =>
-              (completion as { _kind?: string })._kind === 'wikilink'
-                ? 'wikilink-cmd-option'
-                : 'slash-cmd-option'
+            optionClass: (completion) => {
+              const kind = (completion as { _kind?: string })._kind
+              if (kind === 'wikilink') return 'wikilink-cmd-option'
+              if (kind === 'callout') return 'callout-cmd-option'
+              return 'slash-cmd-option'
+            }
           }),
           completionNavKeymap,
           keymap.of([
