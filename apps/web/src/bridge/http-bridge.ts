@@ -1282,6 +1282,10 @@ async function openMarkdownFile(_absPath: string): Promise<boolean> {
   return false
 }
 
+async function openFolderTemporary(_absPath: string): Promise<void> {
+  // Temporary folder sessions are a desktop-only capability (no OS paths on web).
+}
+
 async function toggleQuickCapture(): Promise<void> {
   // Web build can't bind a system-wide shortcut; the quick capture
   // window is desktop-only.
@@ -1547,6 +1551,7 @@ export const httpBridge: ZenBridge = {
   writeExternalFile,
   moveExternalFileToVault,
   openMarkdownFile,
+  openFolderTemporary,
   toggleQuickCapture,
   getQuickCaptureHotkey,
   setQuickCaptureHotkey,

@@ -6,6 +6,7 @@ import { promisify } from 'node:util'
 import { app } from 'electron'
 import { recordMainPerf } from './perf'
 import { resolveCommandViaLoginShell } from './login-shell-path'
+import { isEphemeralRoot } from './ephemeral-vaults'
 import {
   resolveWikilinkTarget,
   rewriteWikilinksForRename,
@@ -1265,6 +1266,9 @@ export async function setVaultSettings(
 ): Promise<VaultSettings> {
   const fallbackPrimary = await inferPrimaryNotesLocation(root)
   const normalized = normalizeVaultSettings(next, fallbackPrimary)
+  // Temporary folder session (#): never write .zennotes/vault.json into a
+  // folder the user only dropped in to read. Keep the change in memory.
+  if (isEphemeralRoot(root)) return cloneVaultSettings(normalized)
   await fs.mkdir(path.dirname(vaultSettingsPath(root)), { recursive: true })
   await fs.writeFile(vaultSettingsPath(root), JSON.stringify(normalized, null, 2), 'utf8')
   if (normalized.primaryNotesLocation === 'inbox') {
@@ -1952,6 +1956,9 @@ async function persistNoteMetaCacheSnapshot(
 
 function schedulePersistNoteMetaCache(root: string, metas: NoteMeta[]): void {
   if (process.env.ZEN_PERF_DISABLE_PERSISTED_META_CACHE === '1') return
+  // Temporary folder session (#): keep the note-meta cache in memory; don't
+  // write .zennotes/ into a folder the user is only browsing.
+  if (isEphemeralRoot(root)) return
   const rootAbs = path.resolve(root)
   clearScheduledPersistNoteMetaCache(rootAbs)
 

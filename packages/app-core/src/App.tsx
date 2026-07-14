@@ -391,7 +391,19 @@ function App(): JSX.Element {
           const path = window.zen.getPathForFile(file)
           if (path) void window.zen.openMarkdownFile(path)
         }
-      }
+      },
+      // Dragging a folder onto the window opens it as a temporary session.
+      // Desktop-only (the web build has no OS paths).
+      ...(runtime === 'web'
+        ? {}
+        : {
+            onFolders: (folders: File[]) => {
+              for (const folder of folders) {
+                const path = window.zen.getPathForFile(folder)
+                if (path) void window.zen.openFolderTemporary(path)
+              }
+            }
+          })
     })
   }, [])
 

@@ -205,7 +205,29 @@
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
       "extendInfo": {
         "CFBundleName": "ZenNotes",
-        "CFBundleDisplayName": "ZenNotes"
+        "CFBundleDisplayName": "ZenNotes",
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Markdown Document",
+            "CFBundleTypeRole": "Editor",
+            "LSHandlerRank": "Alternate",
+            "CFBundleTypeExtensions": [
+              "md",
+              "markdown"
+            ],
+            "LSItemContentTypes": [
+              "net.daringfireball.markdown"
+            ]
+          },
+          {
+            "CFBundleTypeName": "Folder",
+            "CFBundleTypeRole": "Editor",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "public.folder"
+            ]
+          }
+        ]
       },
       "target": [
         {
