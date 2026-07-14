@@ -31,8 +31,14 @@ import {
   dispatchKeyboardContextMenu,
   findTabContextMenuTarget
 } from '../lib/keyboard-context-menu'
-import { navigateActiveBuffer } from '../lib/buffer-navigation'
+import { getBufferNavigationTarget } from '../lib/buffer-navigation'
 import { focusEditorNormalMode } from '../lib/editor-focus'
+import { isWorkspaceVirtualTabPath } from '../lib/workspace-tabs'
+import {
+  isExcalidrawPath,
+  isObsidianExcalidrawMarkdown,
+  isObsidianExcalidrawPath
+} from '@shared/excalidraw'
 
 function escapeForAttr(value: string): string {
   if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(value)
@@ -136,6 +142,39 @@ export function VimNav(): JSX.Element | null {
         useStore.getState().editorViewRef?.focus()
       })
     })
+  }, [])
+  const navigateBuffer = useCallback((delta: 1 | -1): void => {
+    const focusIfCurrentNoteTab = (paneId: string, path: string): void => {
+      const latest = useStore.getState()
+      const leaf = findLeaf(latest.paneLayout, paneId)
+      if (latest.activePaneId !== paneId || leaf?.activeTab !== path) return
+      if (isWorkspaceVirtualTabPath(path)) return
+      if (isExcalidrawPath(path) || isObsidianExcalidrawPath(path)) return
+      if (isObsidianExcalidrawMarkdown(latest.noteContents[path]?.body)) return
+      focusEditorNormalMode()
+    }
+    const state = useStore.getState()
+    const target = getBufferNavigationTarget(
+      state.paneLayout,
+      state.activePaneId,
+      state.notes,
+      delta
+    )
+    if (target.kind === 'focus') {
+      void state.focusTabInPane(target.paneId, target.path).then(() => {
+        focusIfCurrentNoteTab(target.paneId, target.path)
+      })
+      return
+    }
+    if (target.kind === 'open') {
+      void state.openNoteInPane(target.paneId, target.path).then(() => {
+        focusIfCurrentNoteTab(target.paneId, target.path)
+      })
+      return
+    }
+    if (target.kind === 'create-quick') {
+      void state.createAndOpen('quick', '', { focusTitle: true })
+    }
   }, [])
   const cancelHints = useCallback(() => {
     setHint(false)
@@ -493,7 +532,7 @@ export function VimNav(): JSX.Element | null {
             getKeymapBinding(overrides, 'vim.bufferPrevious'),
             previousBufferPending,
             previousBufferTimer,
-            () => navigateActiveBuffer(useStore.getState(), -1),
+            () => navigateBuffer(-1),
             consumeBufferKey
           )
         ) {
@@ -505,7 +544,7 @@ export function VimNav(): JSX.Element | null {
             getKeymapBinding(overrides, 'vim.bufferNext'),
             nextBufferPending,
             nextBufferTimer,
-            () => navigateActiveBuffer(useStore.getState(), 1),
+            () => navigateBuffer(1),
             consumeBufferKey
           )
         ) {
@@ -529,13 +568,13 @@ export function VimNav(): JSX.Element | null {
           if (gTabTokens.length === 2 && gTok === gTabTokens[1]) {
             e.preventDefault()
             e.stopImmediatePropagation()
-            navigateActiveBuffer(useStore.getState(), 1)
+            navigateBuffer(1)
             return
           }
           if (gPrevTokens.length === 2 && gTok === gPrevTokens[1]) {
             e.preventDefault()
             e.stopImmediatePropagation()
-            navigateActiveBuffer(useStore.getState(), -1)
+            navigateBuffer(-1)
             return
           }
           // Not a tab completion (e.g. gg, gd): fall through without consuming.
