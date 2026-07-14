@@ -886,6 +886,23 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
     return true
   }, [paneId, setActivePane, setFocusedPanel])
 
+  const rememberCurrentTabScroll = useCallback((path = viewPathRef.current): void => {
+    if (!path) return
+    const prev = recallTabScroll(path)
+    const view = viewRef.current
+    const previewEl = previewScrollRef.current
+    const next: TabScrollPosition = {
+      editor: view?.scrollDOM.scrollTop ?? prev?.editor ?? 0,
+      preview: previewEl?.scrollTop ?? prev?.preview ?? 0
+    }
+    const selection = view && viewPathRef.current === path ? view.state.selection.main : null
+    if (selection) {
+      next.editorSelectionAnchor = selection.anchor
+      next.editorSelectionHead = selection.head
+    }
+    rememberTabScroll(path, next)
+  }, [])
+
   const toggleConnectionsPanel = useCallback(() => {
     setConnectionsOpen((open) => {
       const next = !open
@@ -1448,6 +1465,7 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
         richMarkdownDeferredRef.current = false
         setSelectionCommentAction(null)
         const existingView = viewRef.current
+        rememberCurrentTabScroll()
         if (
           existingView &&
           useStore.getState().editorViewRef === existingView
@@ -1679,6 +1697,7 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
     [
       openEditorContextMenu,
       paneId,
+      rememberCurrentTabScroll,
       schedulePreviewSyncFromEditorViewport,
       scheduleSelectionCommentAction,
       setActiveCommentId,
@@ -3170,6 +3189,7 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
     const applyEditor = (): void => {
       const view = viewRef.current
       if (!view) return
+      let restoredHead: number | null = null
       if (
         remembered.editorSelectionAnchor != null &&
         remembered.editorSelectionHead != null
@@ -3183,12 +3203,20 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
           0,
           Math.min(docLength, remembered.editorSelectionHead)
         )
+        restoredHead = head
         const current = view.state.selection.main
         if (current.anchor !== anchor || current.head !== head) {
           view.dispatch({ selection: { anchor, head } })
         }
       }
       view.scrollDOM.scrollTop = remembered.editor
+      if (remembered.editor <= 0 && restoredHead != null) {
+        const cursor = view.coordsAtPos(restoredHead)
+        const scroller = view.scrollDOM.getBoundingClientRect()
+        if (!cursor || cursor.bottom < scroller.top || cursor.top > scroller.bottom) {
+          view.dispatch({ effects: EditorView.scrollIntoView(restoredHead, { y: 'center' }) })
+        }
+      }
     }
     applyEditor()
     const raf = requestAnimationFrame(applyEditor)
