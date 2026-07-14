@@ -123,7 +123,10 @@ export function PinnedReferencePane(): JSX.Element | null {
   // Per-note pin (if any) overrides the global one.
   const noteRef = selectedPath ? noteRefs[selectedPath] : null
   const pinnedRefPath = noteRef?.path ?? globalRefPath
-  const pinnedRefFragment = noteRef?.fragment ?? globalRefFragment
+  // Tie the fragment to the same pin as the path: a per-note pin without a
+  // fragment must not inherit the global pin's fragment (which belongs to a
+  // different asset), or its PDF would open at the wrong page.
+  const pinnedRefFragment = noteRef ? noteRef.fragment ?? null : globalRefFragment
   const pinnedRefKind = noteRef?.kind ?? globalRefKind
   const isPerNotePin = !!noteRef
   const pinnedRefVisible = useStore((s) => s.pinnedRefVisible)
