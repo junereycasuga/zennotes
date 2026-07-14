@@ -499,6 +499,9 @@ interface Prefs {
   kanbanGroupBy: KanbanGroupBy
   /** Display-only Kanban column title overrides. Keyed by `${groupBy}:${columnId}`. */
   kanbanColumnTitles: Record<string, string>
+  /** Manual Kanban column arrangement per board. Keyed by groupBy → ordered
+   *  column ids; unlisted columns fall to the end in their built order. */
+  kanbanColumnOrder: Record<string, string[]>
   /** Ordered status ids for the custom-status Kanban board (group-by "custom").
    *  Each id matches an inline `@status:<id>` task token. Config-driven. (#354) */
   kanbanStatuses: string[]
@@ -563,9 +566,12 @@ function normalizeKanbanColumnTitle(title: string): string | null {
 
 // A static-board column-title key is `<status|priority|folder>:<columnId>`; a
 // field-board one is `field:<key>:<value>` (two colons). Accept both so inline
-// column renames survive a config round-trip on every board.
+// column renames survive a config round-trip on every board. The field-value
+// part also accepts the `__none__` sentinel (NO_VALUE_COLUMN_ID in
+// TasksKanban) so renaming the "No <field>" bucket persists too — its underscore
+// prefix would otherwise fail the value grammar and get silently dropped. (#389)
 const STATIC_COLUMN_TITLE_KEY_RE = /^[a-z-]+:[A-Za-z0-9_-]+$/
-const FIELD_COLUMN_TITLE_KEY_RE = /^field:[a-z][a-z0-9_-]*:[\p{L}\d][\p{L}\d/_-]*$/u
+const FIELD_COLUMN_TITLE_KEY_RE = /^field:[a-z][a-z0-9_-]*:(?:__none__|[\p{L}\d][\p{L}\d/_-]*)$/u
 
 function normalizeKanbanColumnTitles(raw: unknown): Record<string, string> {
   if (!raw || typeof raw !== 'object') return {}
@@ -580,6 +586,31 @@ function normalizeKanbanColumnTitles(raw: unknown): Record<string, string> {
     if (!isStatic && !isField) continue
     const normalized = normalizeKanbanColumnTitle(value)
     if (normalized) out[key] = normalized
+  }
+  return out
+}
+
+const MAX_KANBAN_ORDERED_COLUMNS = 64
+
+// Manual column arrangement per board: `{ "<groupBy>": ["<columnId>", ...] }`.
+// Column ids are validated loosely (the same tag-like slugs the boards use);
+// unknown ids are dropped so a stale order can't resurrect vanished columns.
+function normalizeKanbanColumnOrder(raw: unknown): Record<string, string[]> {
+  if (!raw || typeof raw !== 'object') return {}
+  const out: Record<string, string[]> = {}
+  for (const [group, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isKanbanGroupBy(group) || !Array.isArray(value)) continue
+    const ids: string[] = []
+    const seen = new Set<string>()
+    for (const entry of value) {
+      if (typeof entry !== 'string') continue
+      const id = entry.trim().slice(0, MAX_KANBAN_STATUS_ID_LENGTH)
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      ids.push(id)
+      if (ids.length >= MAX_KANBAN_ORDERED_COLUMNS) break
+    }
+    if (ids.length) out[group] = ids
   }
   return out
 }
@@ -630,6 +661,9 @@ export function viewPrefsFromVault(settings: VaultSettings | null | undefined): 
   }
   if (v.kanbanColumnTitles && typeof v.kanbanColumnTitles === 'object') {
     patch.kanbanColumnTitles = normalizeKanbanColumnTitles(v.kanbanColumnTitles)
+  }
+  if (v.kanbanColumnOrder && typeof v.kanbanColumnOrder === 'object') {
+    patch.kanbanColumnOrder = normalizeKanbanColumnOrder(v.kanbanColumnOrder)
   }
   if (Array.isArray(v.kanbanStatuses)) {
     patch.kanbanStatuses = normalizeKanbanStatuses(v.kanbanStatuses)
@@ -737,6 +771,7 @@ export const DEFAULT_PREFS: Prefs = {
   tasksViewMode: 'list',
   kanbanGroupBy: 'status',
   kanbanColumnTitles: {},
+  kanbanColumnOrder: {},
   kanbanStatuses: [],
   hasCompletedOnboarding: false
 }
@@ -989,6 +1024,7 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
         : DEFAULT_PREFS.tasksViewMode,
     kanbanGroupBy: normalizeKanbanGroupBy(p.kanbanGroupBy),
     kanbanColumnTitles: normalizeKanbanColumnTitles(p.kanbanColumnTitles),
+    kanbanColumnOrder: normalizeKanbanColumnOrder(p.kanbanColumnOrder),
     kanbanStatuses: normalizeKanbanStatuses(p.kanbanStatuses),
     hasCompletedOnboarding:
       typeof p.hasCompletedOnboarding === 'boolean'
@@ -1624,6 +1660,7 @@ function collectPrefs(s: {
   tasksViewMode: TasksViewMode
   kanbanGroupBy: KanbanGroupBy
   kanbanColumnTitles: Record<string, string>
+  kanbanColumnOrder: Record<string, string[]>
   kanbanStatuses: string[]
   hasCompletedOnboarding: boolean
 }): Prefs {
@@ -1695,6 +1732,7 @@ function collectPrefs(s: {
     tasksViewMode: s.tasksViewMode,
     kanbanGroupBy: s.kanbanGroupBy,
     kanbanColumnTitles: s.kanbanColumnTitles,
+    kanbanColumnOrder: s.kanbanColumnOrder,
     kanbanStatuses: s.kanbanStatuses,
     hasCompletedOnboarding: s.hasCompletedOnboarding
   }
@@ -2217,6 +2255,8 @@ interface Store {
   kanbanGroupBy: KanbanGroupBy
   /** Display-only column title overrides for the Tasks Kanban view. */
   kanbanColumnTitles: Record<string, string>
+  /** Manual column arrangement per board (groupBy → ordered column ids). */
+  kanbanColumnOrder: Record<string, string[]>
   /** Ordered status ids for the custom-status Kanban board (config-driven). */
   kanbanStatuses: string[]
   /** True once the user has finished or skipped the first-run onboarding. */
@@ -2377,6 +2417,9 @@ interface Store {
     columnId: string,
     title: string | null
   ) => void
+  /** Persist the manual column arrangement for a board. Pass the full ordered
+   *  list of column ids; empties clear the override for that board. */
+  setKanbanColumnOrder: (group: KanbanGroupBy, orderedIds: string[]) => void
   /** Replace the ordered custom-status list (from Settings). Normalized and
    *  written back to config.toml + the per-vault view override. (#354) */
   setKanbanStatuses: (statuses: string[]) => void
@@ -3661,6 +3704,7 @@ export const useStore = create<Store>((set, get) => {
   tasksViewMode: loadPrefs().tasksViewMode,
   kanbanGroupBy: loadPrefs().kanbanGroupBy,
   kanbanColumnTitles: loadPrefs().kanbanColumnTitles,
+  kanbanColumnOrder: loadPrefs().kanbanColumnOrder,
   kanbanStatuses: loadPrefs().kanbanStatuses,
   hasCompletedOnboarding: loadPrefs().hasCompletedOnboarding,
   vaultTasks: [],
@@ -4483,6 +4527,22 @@ export const useStore = create<Store>((set, get) => {
     set({ kanbanColumnTitles: nextTitles })
     savePrefs(collectPrefs(get()))
     persistVaultViewOverride({ kanbanColumnTitles: nextTitles })
+  },
+  setKanbanColumnOrder: (group, orderedIds) => {
+    const ids: string[] = []
+    const seen = new Set<string>()
+    for (const raw of orderedIds) {
+      const id = typeof raw === 'string' ? raw.trim() : ''
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      ids.push(id)
+    }
+    const nextOrder = { ...get().kanbanColumnOrder }
+    if (ids.length) nextOrder[group] = ids
+    else delete nextOrder[group]
+    set({ kanbanColumnOrder: nextOrder })
+    savePrefs(collectPrefs(get()))
+    persistVaultViewOverride({ kanbanColumnOrder: nextOrder })
   },
   setKanbanStatuses: (statuses) => {
     const next = normalizeKanbanStatuses(statuses)

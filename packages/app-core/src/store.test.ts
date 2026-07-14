@@ -5,6 +5,7 @@ import { TASKS_TAB_PATH, type VaultTask } from '@shared/tasks'
 import { databaseTabPath } from '@shared/databases'
 import { assetTabPath } from './lib/asset-tabs'
 import { findLeaf, type PaneLayout, type PaneLeaf } from './lib/pane-layout'
+import { NO_VALUE_COLUMN_ID } from './components/TasksKanban'
 
 function makeTask(content: string, taskIndex = 0): VaultTask {
   return {
@@ -905,6 +906,51 @@ describe('viewPrefsFromVault (#292 — per-vault view overlay)', () => {
     const { viewPrefsFromVault } = await loadStore()
     expect(viewPrefsFromVault({} as unknown as ViewArg)).toEqual({})
     expect(viewPrefsFromVault(null)).toEqual({})
+  })
+
+  it('overlays and normalizes kanbanColumnOrder (#389)', async () => {
+    installZen()
+    const { viewPrefsFromVault } = await loadStore()
+    const patch = viewPrefsFromVault({
+      view: {
+        kanbanColumnOrder: {
+          'field:status': ['review', 'backlog', 'review', 42, 'done'],
+          'not-a-groupby': ['x'],
+          priority: []
+        }
+      }
+    } as unknown as ViewArg)
+    // Dedupes, drops non-strings, drops unknown group-bys, drops empty arrays.
+    expect(patch.kanbanColumnOrder).toEqual({ 'field:status': ['review', 'backlog', 'done'] })
+  })
+
+  it('keeps a renamed No-value bucket title through normalization (#389)', async () => {
+    installZen()
+    const { viewPrefsFromVault } = await loadStore()
+    // The "No <field>" bucket's title key ends in the __none__ sentinel; its
+    // underscore prefix must not be rejected, or the rename would silently vanish.
+    const key = `field:status:${NO_VALUE_COLUMN_ID}`
+    const patch = viewPrefsFromVault({
+      view: { kanbanColumnTitles: { [key]: 'Unassigned', 'field:status:review': 'In review' } }
+    } as unknown as ViewArg)
+    expect(patch.kanbanColumnTitles).toEqual({ [key]: 'Unassigned', 'field:status:review': 'In review' })
+  })
+})
+
+describe('setKanbanColumnOrder (#389 — manual Kanban column order)', () => {
+  it('stores a trimmed, deduped order per board and clears it on empty', async () => {
+    installZen()
+    const { useStore } = await loadStore()
+    useStore
+      .getState()
+      .setKanbanColumnOrder('field:status', ['review', 'backlog', 'review', ' done '])
+    expect(useStore.getState().kanbanColumnOrder['field:status']).toEqual([
+      'review',
+      'backlog',
+      'done'
+    ])
+    useStore.getState().setKanbanColumnOrder('field:status', [])
+    expect(useStore.getState().kanbanColumnOrder['field:status']).toBeUndefined()
   })
 })
 
