@@ -73,6 +73,10 @@ import {
 } from "@shared/overrides";
 import { hasSystemFontAccess, listSystemFonts } from "../lib/system-fonts";
 import {
+  dropdownRectForElement,
+  type DropdownRect,
+} from "../lib/dropdown-placement";
+import {
   DEFAULT_SYSTEM_FOLDER_LABELS,
   getSystemFolderLabel,
 } from "../lib/system-folder-labels";
@@ -5390,11 +5394,7 @@ function TemplateSelectRow({
   const [activeIdx, setActiveIdx] = useState(0);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
-  const [rect, setRect] = useState<{
-    left: number;
-    top: number;
-    width: number;
-  } | null>(null);
+  const [rect, setRect] = useState<DropdownRect | null>(null);
 
   // Row 0 is "None (blank note)" (null), then each template in order.
   const items = useMemo<Array<NoteTemplate | null>>(
@@ -5423,18 +5423,14 @@ function TemplateSelectRow({
     return () => window.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  // Position the popover below the trigger; track scroll/resize.
+  // Position the popover below the trigger (flipping above when clipped); track
+  // scroll/resize. Estimate the menu height from the row count (#407).
   useLayoutEffect(() => {
     if (!open) return;
     const update = (): void => {
       const el = buttonRef.current;
       if (!el) return;
-      const r = el.getBoundingClientRect();
-      setRect({
-        left: r.left,
-        top: r.bottom + 4,
-        width: Math.max(260, r.width),
-      });
+      setRect(dropdownRectForElement(el, { estHeight: items.length * 32 + 8 }));
     };
     update();
     window.addEventListener("resize", update);
@@ -5443,7 +5439,7 @@ function TemplateSelectRow({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [open]);
+  }, [open, items.length]);
 
   // Keep the keyboard-highlighted row in view.
   useEffect(() => {
@@ -5542,8 +5538,14 @@ function TemplateSelectRow({
           <div
             id="zen-template-portal"
             role="listbox"
-            className="fixed z-popover flex max-h-[320px] flex-col overflow-hidden rounded-xl border border-paper-300 bg-paper-100 shadow-float"
-            style={{ left: rect.left, top: rect.top, width: rect.width }}
+            className="fixed z-popover flex flex-col overflow-hidden rounded-xl border border-paper-300 bg-paper-100 shadow-float"
+            style={{
+              left: rect.left,
+              top: rect.top,
+              bottom: rect.bottom,
+              width: rect.width,
+              maxHeight: rect.maxHeight,
+            }}
           >
             <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto py-1">
               {items.map((tpl, idx) => {
@@ -5602,11 +5604,7 @@ function FontRow({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
-  const [rect, setRect] = useState<{
-    left: number;
-    top: number;
-    width: number;
-  } | null>(null);
+  const [rect, setRect] = useState<DropdownRect | null>(null);
 
   // Reset the search box whenever the popover opens.
   useEffect(() => {
@@ -5644,12 +5642,7 @@ function FontRow({
     const update = (): void => {
       const el = buttonRef.current;
       if (!el) return;
-      const r = el.getBoundingClientRect();
-      setRect({
-        left: r.left,
-        top: r.bottom + 4,
-        width: Math.max(260, r.width),
-      });
+      setRect(dropdownRectForElement(el));
     };
     update();
     window.addEventListener("resize", update);
@@ -5770,8 +5763,14 @@ function FontRow({
         createPortal(
           <div
             id="zen-font-portal"
-            className="fixed z-popover flex max-h-[320px] flex-col overflow-hidden rounded-xl border border-paper-300 bg-paper-100 shadow-float"
-            style={{ left: rect.left, top: rect.top, width: rect.width }}
+            className="fixed z-popover flex flex-col overflow-hidden rounded-xl border border-paper-300 bg-paper-100 shadow-float"
+            style={{
+              left: rect.left,
+              top: rect.top,
+              bottom: rect.bottom,
+              width: rect.width,
+              maxHeight: rect.maxHeight,
+            }}
           >
             <div className="border-b border-paper-300/60 p-2">
               <input
