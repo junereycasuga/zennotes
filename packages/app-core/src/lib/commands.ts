@@ -18,7 +18,7 @@ import { forwardTaskWithPicker, taskAtEditorCursor } from './forward-task'
 import { getKeymapDisplay, type KeymapId } from './keymaps'
 import { dispatchKeyboardContextMenu, findTabContextMenuTarget } from './keyboard-context-menu'
 import { resolveSystemFolderLabels } from './system-folder-labels'
-import { noteFolderSubpath, normalizeVaultSettings } from './vault-layout'
+import { isCalendarToggleAvailable, noteFolderSubpath } from './vault-layout'
 import { DEMO_TOUR_START_PATH } from '@shared/demo-tour'
 
 const APP_WEBSITE_URL = 'https://zennotes.org'
@@ -624,10 +624,9 @@ export function buildCommands(options?: { includeUnavailable?: boolean }): Comma
       category: 'View',
       shortcut: getState().vimMode ? leaderShortcut('vim.leaderCalendar') : undefined,
       keywords: 'calendar daily weekly date navigate month week',
-      when: () => {
-        const s = normalizeVaultSettings(getState().vaultSettings)
-        return s.dailyNotes.enabled || s.weeklyNotes.enabled
-      },
+      // The calendar attaches to a note in the pane, so it's unavailable in the
+      // note-less Tasks/Tags views and the Quick Notes scratchpad. (#413)
+      when: () => isCalendarToggleAvailable(getState().vaultSettings, getState().activeNote),
       run: () => {
         window.dispatchEvent(new Event('zen:toggle-calendar'))
       }

@@ -13,6 +13,7 @@ import {
   resolveNextPanel,
   shouldYieldToHomeNav
 } from '../lib/vim-nav'
+import { isCalendarToggleAvailable } from '../lib/vault-layout'
 import { focusPaneInDirection } from '../lib/pane-nav'
 import { findLeaf } from '../lib/pane-layout'
 import { boundedIndexCount, clampIndex, moveIndex } from '../lib/index-navigation'
@@ -180,6 +181,12 @@ export function VimNav(): JSX.Element | null {
     setHint(false)
     focusEditor()
   }, [focusEditor, setHint])
+  // The calendar toggle only works when the active pane holds a note (it can't
+  // render in the note-less Tasks/Tags views), so its leader hint is hidden
+  // there rather than shown as a dead key. (#413)
+  const calendarToggleAvailable = useStore((s) =>
+    isCalendarToggleAvailable(s.vaultSettings, s.activeNote)
+  )
   const whichKeyHintsPref = useStore((s) => s.whichKeyHints)
   const whichKeyHintMode = useStore((s) => s.whichKeyHintMode)
   const whichKeyHintTimeoutMs = useStore((s) => s.whichKeyHintTimeoutMs)
@@ -310,11 +317,15 @@ export function VimNav(): JSX.Element | null {
         label: "This month's note",
         detail: 'Open or create the monthly note for this month.'
       },
-      {
-        keyLabel: getKeymapDisplay(keymapOverrides, 'vim.leaderCalendar'),
-        label: 'Toggle calendar',
-        detail: 'Show or hide the calendar for the active daily/weekly note.'
-      }
+      ...(calendarToggleAvailable
+        ? [
+            {
+              keyLabel: getKeymapDisplay(keymapOverrides, 'vim.leaderCalendar'),
+              label: 'Toggle calendar',
+              detail: 'Show or hide the calendar for the active daily/weekly note.'
+            }
+          ]
+        : [])
     ]
     if (whichKeyState.allowEditorActions) {
       items.push({
@@ -945,12 +956,17 @@ export function VimNav(): JSX.Element | null {
           e.preventDefault()
           e.stopImmediatePropagation()
           resetLeader()
-          // If the calendar is opening (not already shown), move focus into it
-          // once it mounts — the CalendarPanel focuses itself when it sees
-          // focusedPanel === 'calendar'. If it's closing, leave focus alone. (#285)
-          const wasOpen = document.querySelector('[data-calendar-panel]') !== null
-          window.dispatchEvent(new Event('zen:toggle-calendar'))
-          if (!wasOpen) state.setFocusedPanel('calendar')
+          // The calendar can't render without a note in the pane (Tasks/Tags,
+          // Quick Notes), so pressing it there just dismisses the leader hint
+          // rather than silently doing nothing or leaking to another binding. (#413)
+          if (isCalendarToggleAvailable(state.vaultSettings, state.activeNote)) {
+            // If the calendar is opening (not already shown), move focus into it
+            // once it mounts — the CalendarPanel focuses itself when it sees
+            // focusedPanel === 'calendar'. If it's closing, leave focus alone. (#285)
+            const wasOpen = document.querySelector('[data-calendar-panel]') !== null
+            window.dispatchEvent(new Event('zen:toggle-calendar'))
+            if (!wasOpen) state.setFocusedPanel('calendar')
+          }
           return
         }
         // Any other key cancels leader and falls through to normal routing.
