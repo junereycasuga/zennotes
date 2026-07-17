@@ -1074,25 +1074,26 @@ export function CalendarPanel({ note }: { note: NoteContent }): JSX.Element {
             <div className="min-w-0 truncate text-xs font-semibold text-ink-800">
               Week of {weekRangeLabel}
             </div>
-            {weeklyEnabled ? (
-              <button
-                type="button"
-                onClick={() => void handleWeekClick(selectedDate, selectedWeekIso)}
-                title={`Open weekly note (${weeklyNoteTitle(selectedDate)})`}
-                className="shrink-0 rounded px-1.5 py-0.5 text-2xs text-ink-500 transition-colors hover:bg-paper-200 hover:text-accent"
-              >
-                {weeklyByWeek.has(selectedWeekIso) ? 'Open note →' : 'Create note'}
-              </button>
-            ) : (
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
                 onClick={() => void openOrCreateDay(selectedDate, selectedIso)}
-                title={`Open daily note (${selectedIso})`}
+                title={`${dailyByDate.has(selectedIso) ? 'Open' : 'Create'} daily note (${selectedIso})`}
                 className="shrink-0 rounded px-1.5 py-0.5 text-2xs text-ink-500 transition-colors hover:bg-paper-200 hover:text-accent"
               >
-                {dailyByDate.has(selectedIso) ? 'Open note →' : 'Create note'}
+                {dailyByDate.has(selectedIso) ? 'Day →' : 'Day +'}
               </button>
-            )}
+              {weeklyEnabled && (
+                <button
+                  type="button"
+                  onClick={() => void handleWeekClick(selectedDate, selectedWeekIso)}
+                  title={`${weeklyByWeek.has(selectedWeekIso) ? 'Open' : 'Create'} weekly note (${weeklyNoteTitle(selectedDate)})`}
+                  className="shrink-0 rounded px-1.5 py-0.5 text-2xs text-ink-500 transition-colors hover:bg-paper-200 hover:text-accent"
+                >
+                  {weeklyByWeek.has(selectedWeekIso) ? 'Week →' : 'Week +'}
+                </button>
+              )}
+            </div>
           </div>
 
           <form
