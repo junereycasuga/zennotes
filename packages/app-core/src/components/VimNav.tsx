@@ -530,7 +530,12 @@ export function VimNav(): JSX.Element | null {
         !leaderPending.current &&
         !(
           isEditorFocused(state.editorViewRef) &&
-          isEditorInsertMode(state.editorViewRef, state.vimMode)
+          (isEditorInsertMode(state.editorViewRef, state.vimMode) ||
+            // While Vim is mid-command awaiting an argument (after f/F/t/T/r, an
+            // operator, or a count), the next key is that command's literal
+            // target — e.g. `f[` finds `[`. Don't let the `[b`/`]b` buffer-nav
+            // or `gt`/`gT` prefixes swallow it; let it reach codemirror-vim.
+            isVimAwaitingArgument(state.editorViewRef))
         )
       ) {
         const consumeBufferKey = (): void => {
