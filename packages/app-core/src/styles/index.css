@@ -2060,7 +2060,7 @@ html[data-completed-task-style="gray-strikethrough"] .cm-editor .cm-task-done * 
 .cm-editor .cm-frontmatter-line {
   font-size: 0.84em;
   line-height: 1.85;
-  color: rgb(var(--z-grey-1));
+  color: rgb(var(--z-fg));
   background: rgb(var(--z-bg-1) / 0.5);
   padding-left: 0.85em;
   padding-right: 0.85em;
@@ -2094,10 +2094,12 @@ html[data-completed-task-style="gray-strikethrough"] .cm-editor .cm-task-done * 
   text-transform: none;
   letter-spacing: 0;
 }
-/* The key (before the `:`) is a muted label; the value keeps the normal color. */
+/* The key (before the `:`) is a muted-but-legible label; the value renders at
+ * normal text brightness (see the line rule above), so an all-frontmatter note
+ * like a task file stays readable instead of fading into the background. */
 .cm-editor .cm-frontmatter-key,
 .cm-editor .cm-frontmatter-key :is(.tok-meta, .tok-string, .tok-keyword, .tok-atom) {
-  color: rgb(var(--z-grey-0) / 0.62);
+  color: rgb(var(--z-grey-1));
   font-weight: 500;
 }
 /* The `---` fences become the card's quiet, rounded top/bottom edges: hide the

@@ -25,7 +25,13 @@ import type {
 } from '@shared/ipc'
 import type { VaultTask } from '@shared/tasks'
 import { isExcalidrawPath, isObsidianExcalidrawPath } from '@shared/excalidraw'
-import { TASKS_TAB_PATH, isTasksTabPath, parseTasksFromBody } from '@shared/tasks'
+import { TASKS_TAB_PATH, isTasksTabPath, parseTasksFromBody, toIsoDateLocal } from '@shared/tasks'
+import {
+  composeTaskFile,
+  setTaskFileStatus,
+  taskFilePriorityValue,
+  updateFrontmatterFields
+} from '@shared/frontmatter'
 import type { DatabaseDoc, DatabaseSidecar } from '@shared/databases'
 import {
   databaseTabPath,
@@ -1437,7 +1443,15 @@ function applyTaskMutationsToTask(task: VaultTask, mutations: TaskMutation[]): V
   for (const m of mutations) {
     switch (m.kind) {
       case 'set-checked':
-        if (next.checked !== m.checked) next = { ...next, checked: m.checked }
+        if (next.checked !== m.checked) {
+          next = { ...next, checked: m.checked }
+          // A file-task's completion lives in its `status`, so keep that (and the
+          // Kanban-grouping field) in sync optimistically too.
+          if (next.kind === 'file') {
+            const status = m.checked ? 'done' : 'open'
+            next = { ...next, status, fields: { ...next.fields, status } }
+          }
+        }
         break
       case 'set-waiting':
         if (next.waiting !== m.waiting) next = { ...next, waiting: m.waiting }
@@ -1469,6 +1483,40 @@ function applyTaskMutationsToTask(task: VaultTask, mutations: TaskMutation[]): V
     }
   }
   return next
+}
+
+/** Map task mutations onto frontmatter scalar updates for a whole-note file
+ *  task (which has no inline checkbox to edit). Mirrors the inline mutators in
+ *  `applyTaskMutation`. `todayIso` stamps the completion date. */
+function fileTaskMutationUpdates(
+  mutations: TaskMutation[],
+  todayIso: string
+): Record<string, string | null> {
+  const updates: Record<string, string | null> = {}
+  for (const m of mutations) {
+    switch (m.kind) {
+      case 'set-checked':
+        updates.status = m.checked ? 'done' : 'open'
+        updates.completedDate = m.checked ? todayIso : null
+        break
+      case 'set-waiting':
+        updates.status = m.waiting ? 'waiting' : 'open'
+        break
+      case 'set-priority':
+        updates.priority = taskFilePriorityValue(m.priority)
+        break
+      case 'set-due':
+        updates.due = m.due
+        break
+      case 'set-field':
+        updates[m.key] = m.value
+        break
+      case 'set-text':
+        updates.title = m.text.trim()
+        break
+    }
+  }
+  return updates
 }
 
 function yieldForOptimisticPaint(): Promise<void> {
@@ -2474,6 +2522,10 @@ interface Store {
     options?: { focusTitle?: boolean; title?: string }
   ) => Promise<void>
   createDrawingAndOpen: (folder: NoteFolder, subpath?: string) => Promise<void>
+  /** Quick-add a whole-note task file (`#task`-tagged, TaskNotes-style) at the
+   *  configured tasks location. Prompts for a title; the new task then appears
+   *  in the Tasks view. Resolves to the created path, or null if cancelled. */
+  newTaskFile: () => Promise<string | null>
   /**
    * Create a note after asking where to put it: a destination prompt that
    * defaults to `initialPath` (empty = vault root), so the user can press Enter
@@ -3995,6 +4047,33 @@ export const useStore = create<Store>((set, get) => {
     )
     await get().createDatabase(folder, subpath)
   },
+  newTaskFile: async () => {
+    const title = (
+      await promptApp({
+        title: 'New task',
+        placeholder: 'Task title, e.g. Buy groceries',
+        okLabel: 'Create task'
+      })
+    )?.trim()
+    if (!title) return null
+    const s = get()
+    const settings = normalizeVaultSettings(s.vaultSettings)
+    const { folder, subpath } = resolveCreateLocation(settings.tasksLocation, s.activeNote, settings)
+    try {
+      const meta = await window.zen.createNote(folder, title, subpath)
+      // Overwrite the default `# title` body with the TaskNotes-style frontmatter
+      // so the note is recognized as a task and shows up in the Tasks view.
+      await window.zen.writeNote(
+        meta.path,
+        composeTaskFile({ title, dateCreated: new Date().toISOString() })
+      )
+      await get().refreshTasks()
+      return meta.path
+    } catch (err) {
+      console.error('newTaskFile failed', err)
+      return null
+    }
+  },
   renameDatabase: async (csvPath, newTitle) => {
     if (typeof window.zen.renameDatabase !== 'function') return
     try {
@@ -4314,7 +4393,13 @@ export const useStore = create<Store>((set, get) => {
     const openBuffer = state.noteContents[path]
     // Prefer the live buffer for open notes so we don't stomp unsaved edits.
     const body = openBuffer?.body ?? (await window.zen.readNote(path)).body
-    const nextBody = toggleTaskAtIndex(body, task.taskIndex, !task.checked)
+    // A file-task's completion lives in frontmatter (`status`/`completedDate`),
+    // not a checkbox char.
+    const nextChecked = !task.checked
+    const nextBody =
+      task.kind === 'file'
+        ? setTaskFileStatus(body, nextChecked, toIsoDateLocal(new Date()))
+        : toggleTaskAtIndex(body, task.taskIndex, nextChecked)
     if (nextBody === body) return
 
     if (openBuffer) {
@@ -4332,10 +4417,13 @@ export const useStore = create<Store>((set, get) => {
 
     // Optimistically reflect the change locally; the watcher echo will
     // confirm via rescanTasksForPath.
+    const nextStatus = nextChecked ? 'done' : 'open'
     set((s) => ({
       vaultTasks: s.vaultTasks.map((t) =>
         t.sourcePath === path && t.taskIndex === task.taskIndex
-          ? { ...t, checked: !task.checked }
+          ? task.kind === 'file'
+            ? { ...t, checked: nextChecked, status: nextStatus, fields: { ...t.fields, status: nextStatus } }
+            : { ...t, checked: nextChecked }
           : t
       )
     }))
@@ -4370,26 +4458,35 @@ export const useStore = create<Store>((set, get) => {
     }
 
     let nextBody = body
-    for (const m of mutations) {
-      switch (m.kind) {
-        case 'set-checked':
-          nextBody = setTaskCheckedAtIndex(nextBody, task.taskIndex, m.checked)
-          break
-        case 'set-waiting':
-          nextBody = setTaskWaitingAtIndex(nextBody, task.taskIndex, m.waiting)
-          break
-        case 'set-priority':
-          nextBody = setTaskPriorityAtIndex(nextBody, task.taskIndex, m.priority)
-          break
-        case 'set-due':
-          nextBody = setTaskDueAtIndex(nextBody, task.taskIndex, m.due)
-          break
-        case 'set-field':
-          nextBody = setTaskFieldAtIndex(nextBody, task.taskIndex, m.key, m.value)
-          break
-        case 'set-text':
-          nextBody = setTaskTextAtIndex(nextBody, task.taskIndex, m.text)
-          break
+    if (task.kind === 'file') {
+      // Whole-note task: every field lives in frontmatter, so apply the whole
+      // batch as one frontmatter rewrite rather than per-line edits.
+      nextBody = updateFrontmatterFields(
+        body,
+        fileTaskMutationUpdates(mutations, toIsoDateLocal(new Date()))
+      )
+    } else {
+      for (const m of mutations) {
+        switch (m.kind) {
+          case 'set-checked':
+            nextBody = setTaskCheckedAtIndex(nextBody, task.taskIndex, m.checked)
+            break
+          case 'set-waiting':
+            nextBody = setTaskWaitingAtIndex(nextBody, task.taskIndex, m.waiting)
+            break
+          case 'set-priority':
+            nextBody = setTaskPriorityAtIndex(nextBody, task.taskIndex, m.priority)
+            break
+          case 'set-due':
+            nextBody = setTaskDueAtIndex(nextBody, task.taskIndex, m.due)
+            break
+          case 'set-field':
+            nextBody = setTaskFieldAtIndex(nextBody, task.taskIndex, m.key, m.value)
+            break
+          case 'set-text':
+            nextBody = setTaskTextAtIndex(nextBody, task.taskIndex, m.text)
+            break
+        }
       }
     }
     if (nextBody === body) {
@@ -4412,6 +4509,20 @@ export const useStore = create<Store>((set, get) => {
 
   deleteTaskFromList: async (task) => {
     const path = task.sourcePath
+    // A file-task *is* the note, so "delete" means trash the whole note (with a
+    // confirm, since it may hold body notes). Inline tasks just drop their line.
+    if (task.kind === 'file') {
+      if (!(await confirmMoveToTrash(task.noteTitle))) return
+      set((s) => ({ vaultTasks: s.vaultTasks.filter((t) => t.sourcePath !== path) }))
+      try {
+        await window.zen.moveToTrash(path)
+        await get().refreshNotes()
+      } catch (err) {
+        console.error('deleteTaskFromList moveToTrash failed', err)
+        void get().refreshTasks()
+      }
+      return
+    }
     const openBuffer = get().noteContents[path]
     let body: string
     try {
@@ -4444,6 +4555,12 @@ export const useStore = create<Store>((set, get) => {
   moveTaskToDate: async (task, dateIso) => {
     const parsed = parseIsoDateLocal(dateIso)
     if (!parsed) return
+    // A file-task isn't a line that can move into a daily note; rescheduling it
+    // just rewrites its frontmatter `due`.
+    if (task.kind === 'file') {
+      await get().applyTaskMutation(task, { kind: 'set-due', due: dateIso })
+      return
+    }
     const settings = normalizeVaultSettings(get().vaultSettings)
     // No daily notes to move into — just set the due date instead.
     if (!settings.dailyNotes.enabled) {

@@ -393,6 +393,9 @@ export interface VaultSettings {
   drawingsLocation?: FileLocationSetting
   /** Where new databases are created; absent means the default (`primary`). (#362) */
   databasesLocation?: FileLocationSetting
+  /** Where new task files (`#task`-tagged notes) are created; absent means the
+   *  default (`primary`, i.e. the inbox). */
+  tasksLocation?: FileLocationSetting
   /** Per-vault view overrides (#292); absent/empty means "inherit global". */
   view?: VaultViewSettings
   folderIcons: Record<string, FolderIconId>
@@ -442,6 +445,7 @@ export const DEFAULT_VAULT_SETTINGS: VaultSettings = {
   },
   drawingsLocation: { mode: 'primary' },
   databasesLocation: { mode: 'primary' },
+  tasksLocation: { mode: 'primary' },
   folderIcons: {},
   folderColors: {},
   favorites: []
