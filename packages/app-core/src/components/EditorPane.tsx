@@ -53,7 +53,7 @@ import { isImeComposing } from '../lib/ime'
 import { resolveCodeLanguage } from '../lib/cm-code-languages'
 import { markdownListIndentPlugin } from '../lib/cm-markdown-list-indent'
 import { forwardOnCheckboxArrow } from '../lib/cm-forward-task'
-import { completionNavKeymap } from '../lib/cm-completion-nav'
+import { completionKeymapForEditor, completionNavKeymap } from '../lib/cm-completion-nav'
 import { vimAwareDefaultKeymap, vimAwareMarkdownKeymap } from '../lib/cm-vim-default-keymap'
 import { toCodeMirrorKey, vimHalfPageKeymap } from '../lib/vim-half-page-keymap'
 import { scrollOff } from '../lib/cm-scrolloff'
@@ -74,7 +74,7 @@ import { syntaxHighlighting, HighlightStyle, defaultHighlightStyle } from '@code
 import { headingFolding } from '../lib/cm-heading-fold'
 import { tags as t } from '@lezer/highlight'
 import { searchKeymap } from '@codemirror/search'
-import { autocompletion, completionKeymap } from '@codemirror/autocomplete'
+import { autocompletion } from '@codemirror/autocomplete'
 import { useStore } from '../store'
 import type { LineNumberMode } from '../store'
 import type { PaneEdge, PaneLeaf } from '../lib/pane-layout'
@@ -311,7 +311,7 @@ function buildEditorKeymap(vimMode: boolean, overrides: KeymapOverrides): Extens
     ...vimAwareDefaultKeymap(vimMode),
     ...historyKeymap,
     ...searchKeymap,
-    ...completionKeymap
+    ...completionKeymapForEditor
   ])
 }
 
@@ -1603,6 +1603,11 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
           lineNumbersCompartment.of(lineNumberExtension(s0.lineNumberMode)),
           tooltips({ parent: document.body }),
           autocompletion({
+            // Don't install @codemirror/autocomplete's stock keymap — it binds
+            // mac-only `Alt-`` / `Alt-i` to completion and swallows the char
+            // those combos type on AltGr-style layouts (#429). Our filtered
+            // `completionKeymapForEditor` (in buildEditorKeymap) covers the rest.
+            defaultKeymap: false,
             override: [
               slashCommandSource,
               calloutTypeSource,
