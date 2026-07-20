@@ -1450,10 +1450,12 @@ textarea,
   border: 2px solid transparent;
 }
 
-.workspace-tab-strip {
-  scrollbar-color: var(--scrollbar) transparent;
-}
-
+/* Keep the horizontal tab-strip scrollbar slim (6px) so it doesn't eat into the
+   tab height and clip titles in Compact density (#421). NOTE: do not set the
+   standard `scrollbar-color`/`scrollbar-width` here — in Chromium those opt the
+   element into standard scrollbar rendering and *disable* the `::-webkit-
+   scrollbar` rule below, which is what silently left a fat ~15px bar. The thumb
+   colour comes from the global `::-webkit-scrollbar-thumb` rule. */
 .workspace-tab-strip::-webkit-scrollbar {
   height: 6px;
 }

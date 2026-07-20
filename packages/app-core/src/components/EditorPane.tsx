@@ -2843,7 +2843,14 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
             className={[
               // Flat, full-height segmented tabs (VS Code-style): right-border
               // separators, no rounded tops; the active tab is filled. (#185)
-              'group relative flex h-full min-h-8 min-w-0 items-center gap-1.5 border-r border-paper-300/60 px-[var(--z-tab-pad-x)] text-sm transition-colors',
+              'group relative flex h-full min-w-0 items-center gap-1.5 border-r border-paper-300/60 px-[var(--z-tab-pad-x)] text-sm transition-colors',
+              // `min-h-8` gives wrapped rows a consistent floor. In no-wrap mode
+              // the strip is a fixed-height single row with a horizontal
+              // scrollbar; forcing the tab to that same min-height made it
+              // overflow the area the scrollbar leaves and clipped the title in
+              // Compact density (#421). Let `h-full` size it to the scroll area
+              // there instead.
+              wrapTabs ? 'min-h-8' : '',
               tab.pinned ? 'max-w-[140px]' : 'max-w-[220px]',
               active && isActive
                 ? focusedPanel === 'tabs'
@@ -2937,7 +2944,8 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
       reorderTabInPane,
       tabDropIndicator,
       tabs,
-      unpinTabInPane
+      unpinTabInPane,
+      wrapTabs
     ]
   )
 
