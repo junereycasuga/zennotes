@@ -149,6 +149,11 @@ const SCALAR_FIELDS: Partial<Record<PortablePrefKey, ScalarFieldMap>> = {
     tomlKey: 'math_renderer',
     comment: 'katex | typst: typesetter for $…$ / $$…$$ math'
   },
+  looseMathDelimiters: {
+    section: 'editor',
+    tomlKey: 'loose_math_delimiters',
+    comment: 'render $$…$$ display math even with text before/after the fences'
+  },
   lineNumberMode: {
     section: 'editor',
     tomlKey: 'line_number_mode',

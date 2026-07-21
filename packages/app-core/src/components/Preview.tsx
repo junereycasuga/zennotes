@@ -2,7 +2,11 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import type { NoteMeta } from "@shared/ipc";
-import { renderMarkdown, setMarkdownMathRenderer } from "../lib/markdown";
+import {
+  renderMarkdown,
+  setMarkdownLooseMathDelimiters,
+  setMarkdownMathRenderer,
+} from "../lib/markdown";
 import { expandEmbeds, hasNoteEmbeds } from "../lib/transclusion";
 import { useStore } from "../store";
 import { resolveAuto, THEMES } from "../lib/themes";
@@ -386,6 +390,7 @@ export const Preview = memo(function Preview({
 }): JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null);
   const mathRenderer = useStore((s) => s.mathRenderer);
+  const looseMathDelimiters = useStore((s) => s.looseMathDelimiters);
   const vault = useStore((s) => s.vault);
   const notes = useStore((s) => s.notes);
   const folders = useStore((s) => s.folders);
@@ -513,8 +518,9 @@ export const Preview = memo(function Preview({
     // Point the pipeline at the active engine before rendering, so a toggle
     // takes effect on the very next render without an effect-ordering race.
     setMarkdownMathRenderer(mathRenderer);
+    setMarkdownLooseMathDelimiters(looseMathDelimiters);
     return renderMarkdown(expandedForCurrent ?? markdown);
-  }, [expandedForCurrent, markdown, mathRenderer]);
+  }, [expandedForCurrent, markdown, mathRenderer, looseMathDelimiters]);
   const assetFilesKey = useMemo(
     () => assetFiles.map((asset) => asset.path).join("\n"),
     [assetFiles],

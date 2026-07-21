@@ -25,7 +25,7 @@ import { recordRendererPerf } from './lib/perf'
 import { focusEditorNormalMode } from './lib/editor-focus'
 import { isAppOverlayOpen } from './lib/overlay-open'
 import { installMarkdownFileDropHandler } from './lib/markdown-file-drop'
-import { setMarkdownMathRenderer } from './lib/markdown'
+import { setMarkdownLooseMathDelimiters, setMarkdownMathRenderer } from './lib/markdown'
 import {
   appUpdateNoticeLabel,
   appUpdatePrimaryActionLabel,
@@ -294,6 +294,7 @@ function App(): JSX.Element {
   const contentAlign = useStore((s) => s.contentAlign)
   const completedTaskStyle = useStore((s) => s.completedTaskStyle)
   const mathRenderer = useStore((s) => s.mathRenderer)
+  const looseMathDelimiters = useStore((s) => s.looseMathDelimiters)
   const lineNumberPosition = useStore((s) => s.lineNumberPosition)
   const interfaceFont = useStore((s) => s.interfaceFont)
   const textFont = useStore((s) => s.textFont)
@@ -557,6 +558,10 @@ function App(): JSX.Element {
   useEffect(() => {
     setMarkdownMathRenderer(mathRenderer)
   }, [mathRenderer])
+
+  useEffect(() => {
+    setMarkdownLooseMathDelimiters(looseMathDelimiters)
+  }, [looseMathDelimiters])
 
   // The app now always runs fully opaque.
   useEffect(() => {

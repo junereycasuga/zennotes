@@ -401,6 +401,10 @@ interface Prefs {
   /** Typesetter for `$…$` / `$$…$$` math (KaTeX or Typst), in both the editor
    *  live preview and the reading view. */
   mathRenderer: MathRenderer
+  /** Relax `$$…$$` display math so prose before the open fence (`Note: $$…$$`)
+   *  or after the close fence (`$$…$$ done`) still renders in the reading view.
+   *  Off by default; the editor keeps showing source for those shapes. */
+  looseMathDelimiters: boolean
   /** Keep the current view mode (Edit / Split / Preview) when switching notes
    *  instead of resolving each note's own last mode. Off = per-note (default). */
   keepViewModeAcrossNotes: boolean
@@ -725,6 +729,7 @@ export const DEFAULT_PREFS: Prefs = {
   renderTablesInLivePreview: true,
   completedTaskStyle: 'none',
   mathRenderer: 'katex',
+  looseMathDelimiters: false,
   keepViewModeAcrossNotes: false,
   markdownSnippets: true,
   hideBuiltinTemplates: false,
@@ -856,6 +861,10 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
       p.mathRenderer === 'typst' || p.mathRenderer === 'katex'
         ? p.mathRenderer
         : DEFAULT_PREFS.mathRenderer,
+    looseMathDelimiters:
+      typeof p.looseMathDelimiters === 'boolean'
+        ? p.looseMathDelimiters
+        : DEFAULT_PREFS.looseMathDelimiters,
     keepViewModeAcrossNotes:
       typeof p.keepViewModeAcrossNotes === 'boolean'
         ? p.keepViewModeAcrossNotes
@@ -1666,6 +1675,7 @@ function collectPrefs(s: {
   renderTablesInLivePreview: boolean
   completedTaskStyle: CompletedTaskStyle
   mathRenderer: MathRenderer
+  looseMathDelimiters: boolean
   keepViewModeAcrossNotes: boolean
   markdownSnippets: boolean
   hideBuiltinTemplates: boolean
@@ -1739,6 +1749,7 @@ function collectPrefs(s: {
     renderTablesInLivePreview: s.renderTablesInLivePreview,
     completedTaskStyle: s.completedTaskStyle,
     mathRenderer: s.mathRenderer,
+    looseMathDelimiters: s.looseMathDelimiters,
     keepViewModeAcrossNotes: s.keepViewModeAcrossNotes,
     markdownSnippets: s.markdownSnippets,
     hideBuiltinTemplates: s.hideBuiltinTemplates,
@@ -2190,6 +2201,7 @@ interface Store {
   renderTablesInLivePreview: boolean
   completedTaskStyle: CompletedTaskStyle
   mathRenderer: MathRenderer
+  looseMathDelimiters: boolean
   keepViewModeAcrossNotes: boolean
   /** Auto-close markdown delimiters while typing. Persisted. */
   markdownSnippets: boolean
@@ -2578,6 +2590,7 @@ interface Store {
   setRenderTablesInLivePreview: (on: boolean) => void
   setCompletedTaskStyle: (style: CompletedTaskStyle) => void
   setMathRenderer: (renderer: MathRenderer) => void
+  setLooseMathDelimiters: (on: boolean) => void
   setKeepViewModeAcrossNotes: (on: boolean) => void
   setMarkdownSnippets: (on: boolean) => void
   setHideBuiltinTemplates: (hidden: boolean) => void
@@ -3726,6 +3739,7 @@ export const useStore = create<Store>((set, get) => {
   renderTablesInLivePreview: loadPrefs().renderTablesInLivePreview,
   completedTaskStyle: loadPrefs().completedTaskStyle,
   mathRenderer: loadPrefs().mathRenderer,
+  looseMathDelimiters: loadPrefs().looseMathDelimiters,
   keepViewModeAcrossNotes: loadPrefs().keepViewModeAcrossNotes,
   markdownSnippets: loadPrefs().markdownSnippets,
   hideBuiltinTemplates: loadPrefs().hideBuiltinTemplates,
@@ -5821,6 +5835,10 @@ export const useStore = create<Store>((set, get) => {
   },
   setMathRenderer: (renderer) => {
     set({ mathRenderer: renderer })
+    savePrefs(collectPrefs(get()))
+  },
+  setLooseMathDelimiters: (on) => {
+    set({ looseMathDelimiters: on })
     savePrefs(collectPrefs(get()))
   },
   setKeepViewModeAcrossNotes: (on) => {

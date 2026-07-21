@@ -441,6 +441,8 @@ export function SettingsModal(): JSX.Element {
   const setCompletedTaskStyle = useStore((s) => s.setCompletedTaskStyle);
   const mathRenderer = useStore((s) => s.mathRenderer);
   const setMathRenderer = useStore((s) => s.setMathRenderer);
+  const looseMathDelimiters = useStore((s) => s.looseMathDelimiters);
+  const setLooseMathDelimiters = useStore((s) => s.setLooseMathDelimiters);
   const keepViewModeAcrossNotes = useStore((s) => s.keepViewModeAcrossNotes);
   const setKeepViewModeAcrossNotes = useStore(
     (s) => s.setKeepViewModeAcrossNotes,
@@ -1783,6 +1785,23 @@ export function SettingsModal(): JSX.Element {
           ],
         },
         {
+          id: "loose-math-delimiters",
+          title: "Relaxed $$ math delimiters",
+          description:
+            "Render $$…$$ display math even with text before or after the fences, like LaTeX.",
+          keywords: [
+            "math",
+            "display",
+            "dollar",
+            "delimiter",
+            "fence",
+            "inline",
+            "latex",
+            "relaxed",
+            "loose",
+          ],
+        },
+        {
           id: "markdown-overrides",
           title: "Markdown snippets",
           description:
@@ -2108,6 +2127,13 @@ export function SettingsModal(): JSX.Element {
                     { value: "typst", label: "Typst" },
                   ]}
                   onChange={(next) => setMathRenderer(next)}
+                />
+                <ToggleRow
+                  label="Relaxed $$ math delimiters"
+                  description="Render a $$…$$ display block even when text sits before the opening $$ (`Note: $$…$$`) or after the closing $$ (`$$…$$ done`), like LaTeX. Off by default; the surrounding text moves to its own line in the reading view, while the editor keeps showing the raw source. Leave off if you write literal $$ in prose."
+                  value={looseMathDelimiters}
+                  settingId="loose-math-delimiters"
+                  onChange={setLooseMathDelimiters}
                 />
                 <ToggleRow
                   label="Keep view mode when switching notes"

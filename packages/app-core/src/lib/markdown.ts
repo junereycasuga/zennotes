@@ -620,6 +620,21 @@ export function setMarkdownMathRenderer(mathRenderer: 'katex' | 'typst'): void {
   markdownRenderCache.clear()
 }
 
+// When on, a `$$…$$` display block also renders when prose sits before the
+// opening fence (`Note: $$…$$`) or after the closing fence (`$$…$$ done`); the
+// prose is split onto its own paragraph so the fence owns its line. Off by
+// default (the `looseMathDelimiters` setting drives it); the editor keeps
+// showing source for those shapes, so this only relaxes the reading view.
+let looseMathDelimiters = false
+
+/** Toggle relaxed `$$` display-math delimiters (prose before/after the fence).
+ *  Clears the render cache so the current note re-renders under the new rule. */
+export function setMarkdownLooseMathDelimiters(loose: boolean): void {
+  if (loose === looseMathDelimiters) return
+  looseMathDelimiters = loose
+  markdownRenderCache.clear()
+}
+
 function activeProcessor() {
   if (activeMathRenderer === 'typst') {
     return (typstProcessor ??= createProcessor('typst'))
@@ -700,7 +715,7 @@ function escapeTableMathPipes(src: string): string {
  * anything the editor itself rejects (mid-line `$$`, empty or unclosed blocks)
  * passes through unchanged — canonical notes come back byte-identical.
  */
-function normalizeBlockMathFences(src: string): string {
+function normalizeBlockMathFences(src: string, loose = false): string {
   if (!src.includes('$$')) return src
   const lines = src.split('\n')
   const out: string[] = []
@@ -723,14 +738,27 @@ function normalizeBlockMathFences(src: string): string {
       i++
       continue
     }
-    const open = raw.match(/^( {0,3})\$\$(?!\$)(.*)$/)
-    if (!open) {
+    // Opening fence: strict is `$$` at line start; loose also accepts prose
+    // before a `$$` that ends the line (`Note: $$`), splitting the prose off.
+    let indent: string | null = null
+    let rest = ''
+    let proseBefore = ''
+    const strictOpen = raw.match(/^( {0,3})\$\$(?!\$)(.*)$/)
+    if (strictOpen) {
+      indent = strictOpen[1]
+      rest = strictOpen[2]
+    } else if (loose) {
+      const looseOpen = raw.match(/^( {0,3})(.+?)\s*\$\$(?!\$)\s*$/)
+      if (looseOpen && !looseOpen[2].includes('$$')) {
+        indent = looseOpen[1]
+        proseBefore = looseOpen[2]
+      }
+    }
+    if (indent === null) {
       out.push(raw)
       i++
       continue
     }
-    const indent = open[1]
-    const rest = open[2]
     const restTrimmed = rest.trim()
     if (restTrimmed.includes('$$')) {
       // `$$x^2$$` on one line: expand it. Anything else with a `$$` mid-line
@@ -749,9 +777,11 @@ function normalizeBlockMathFences(src: string): string {
       continue
     }
     // Multi-line block: find the closing fence, giving up at the first `$$`
-    // the editor's whole-line rule would reject.
+    // the editor's whole-line rule would reject. In loose mode, prose after
+    // the close fence (`$$ done`) is also accepted and split off.
     let close = -1
     let closeHasContent = false
+    let closeTrailing = ''
     for (let k = i + 1; k < lines.length; k++) {
       const t = lines[k].trim()
       if (!t.includes('$$')) continue
@@ -760,14 +790,29 @@ function normalizeBlockMathFences(src: string): string {
       } else if (t.endsWith('$$') && t.indexOf('$$') === t.length - 2) {
         close = k
         closeHasContent = true
+      } else if (loose) {
+        // `$$ done` (prose after the close) or `x^2$$ done` (content + prose).
+        const trailing = t.match(/^(.*?)\$\$(?!\$)\s+(\S.*)$/)
+        if (trailing && !trailing[1].includes('$$')) {
+          close = k
+          if (trailing[1].trim() !== '') closeHasContent = true
+          closeTrailing = trailing[2]
+        }
       }
       break
     }
-    if (close === -1 || (restTrimmed === '' && !closeHasContent)) {
+    const alreadyCanonical =
+      restTrimmed === '' && !closeHasContent && proseBefore === '' && closeTrailing === ''
+    if (close === -1 || alreadyCanonical) {
       // Unclosed, editor-rejected, or already canonical: leave untouched.
       out.push(raw)
       i++
       continue
+    }
+    if (proseBefore !== '') {
+      // Prose leading the open fence becomes its own paragraph.
+      out.push(`${indent}${proseBefore}`, '')
+      changed = true
     }
     out.push(`${indent}$$`)
     if (restTrimmed !== '') {
@@ -775,7 +820,15 @@ function normalizeBlockMathFences(src: string): string {
       changed = true
     }
     for (let k = i + 1; k < close; k++) out.push(lines[k])
-    if (closeHasContent) {
+    if (closeTrailing !== '') {
+      // Loose close: `[content]$$ trailing` -> content, `$$`, blank, trailing.
+      const rawClose = lines[close]
+      const idx = rawClose.lastIndexOf('$$')
+      const beforeDollar = rawClose.slice(0, idx)
+      if (beforeDollar.trim() !== '') out.push(beforeDollar)
+      out.push(`${indent}$$`, '', `${indent}${closeTrailing}`)
+      changed = true
+    } else if (closeHasContent) {
       const rawClose = lines[close]
       const idx = rawClose.lastIndexOf('$$')
       out.push(rawClose.slice(0, idx), `${indent}$$`)
@@ -800,7 +853,7 @@ export function renderMarkdown(src: string): string {
     const html = sanitizeRenderedHtml(
       String(
         activeProcessor().processSync(
-          escapeTableMathPipes(normalizeBlockMathFences(src))
+          escapeTableMathPipes(normalizeBlockMathFences(src, looseMathDelimiters))
         )
       )
     )
