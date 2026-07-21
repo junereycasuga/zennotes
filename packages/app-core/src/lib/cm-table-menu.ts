@@ -147,6 +147,10 @@ export function openTableContextMenu(req: TableMenuRequest): void {
   const menu = document.createElement('div')
   menu.className = 'cm-table-menu'
   menu.setAttribute('role', 'menu')
+  // Mark as a context menu so the app's global capture-phase key handlers
+  // (VimNav note-list nav, pane focus, the list views) stand down while it's
+  // open — otherwise j/k/Enter leak past the menu to the sidebar. (#437)
+  menu.setAttribute('data-ctx-menu', '')
 
   for (const item of items) {
     if (item.kind === 'sep') {

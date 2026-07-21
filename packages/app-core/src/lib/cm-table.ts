@@ -192,6 +192,17 @@ class TableWidget extends WidgetType {
     }
   }
 
+  /** Apply a context-menu action, then keep keyboard focus usable. Actions with
+   *  a target cell (insert/move/duplicate/align) focus it via `applyModel`;
+   *  actions without one (delete row/column, sort) would otherwise drop focus to
+   *  the body, so return it to the editor once the widget has re-rendered. (#437) */
+  private applyMenuAction(next: MarkdownTable, focus?: CellAddress): void {
+    this.applyModel(next, focus)
+    if (!focus) {
+      requestAnimationFrame(() => this.view.focus())
+    }
+  }
+
   /** Pull pending cell edits into the model, then apply a structural
    *  transform and commit — all without an intermediate dispatch, so our DOM
    *  stays attached for the single `commitTable` write. */
@@ -474,7 +485,7 @@ class TableWidget extends WidgetType {
         row,
         col,
         model: this.model,
-        apply: (next, focus) => this.applyModel(next, focus)
+        apply: (next, focus) => this.applyMenuAction(next, focus)
       })
     })
     cell.append(editable)
@@ -1352,7 +1363,7 @@ class TableWidget extends WidgetType {
       row,
       col,
       model: this.model,
-      apply: (next, focus) => this.applyModel(next, focus)
+      apply: (next, focus) => this.applyMenuAction(next, focus)
     })
   }
 
