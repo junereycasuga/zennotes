@@ -981,6 +981,7 @@ function normalizeVaultSettings(
       },
       drawingsLocation: { mode: 'primary' },
       databasesLocation: { mode: 'primary' },
+      tasksLocation: { mode: 'primary' },
       folderIcons: {},
       folderColors: {},
       favorites: []
@@ -1016,6 +1017,7 @@ function normalizeVaultSettings(
     } | null
     drawingsLocation?: unknown
     databasesLocation?: unknown
+    tasksLocation?: unknown
     folderIcons?: Record<string, unknown> | null
     folderColors?: Record<string, unknown> | null
     favorites?: unknown
@@ -1069,6 +1071,7 @@ function normalizeVaultSettings(
     },
     drawingsLocation: normalizeFileLocation(candidate.drawingsLocation),
     databasesLocation: normalizeFileLocation(candidate.databasesLocation),
+    tasksLocation: normalizeFileLocation(candidate.tasksLocation),
     folderIcons,
     folderColors: normalizeFolderColors(candidate.folderColors),
     favorites: normalizeFavorites(candidate.favorites),
