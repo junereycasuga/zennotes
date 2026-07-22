@@ -57,8 +57,7 @@ import { completionKeymapForEditor, completionNavKeymap } from '../lib/cm-comple
 import { vimAwareDefaultKeymap, vimAwareMarkdownKeymap } from '../lib/cm-vim-default-keymap'
 import { toCodeMirrorKey, vimHalfPageKeymap } from '../lib/vim-half-page-keymap'
 import { scrollOff } from '../lib/cm-scrolloff'
-import { offerCreateNoteFromLink } from '../lib/create-note-from-link'
-import { externalFileLink, openExternalFileLink } from '../lib/external-file-link'
+import { followLinkTarget } from '../lib/follow-link'
 import { setHoveredLink } from '../lib/hovered-link'
 import {
   setYankToClipboardEnabled,
@@ -97,14 +96,7 @@ import { slashCommandSource, slashCommandRender } from '../lib/cm-slash-commands
 import { calloutTypeSource } from '../lib/cm-callouts'
 import { dateShortcutSource } from '../lib/cm-date-shortcuts'
 import { wikilinkSource, wikilinkHeadingSource, atNoteSource } from '../lib/cm-wikilinks'
-import { resolveWikilinkTarget, wikilinkHeadingAnchor } from '../lib/wikilinks'
-import { openDatabaseFromWikilink, openWikilinkHeading } from '../lib/wikilink-navigation'
-import {
-  externalLinkUrl,
-  extractLinkAtCursor,
-  markdownLinkAt,
-  resolveInternalNoteHref
-} from '../lib/internal-links'
+import { extractLinkAtCursor, markdownLinkAt } from '../lib/internal-links'
 import { setBlockType, toggleWrap, wrapLink } from '../lib/cm-format'
 import { EditorSelectionToolbar } from './EditorSelectionToolbar'
 import { appMarkdownSnippetExtension } from '../lib/markdown-snippets-config'
@@ -682,45 +674,6 @@ function getEditorContextMenuPosition(view: EditorView): { x: number; y: number 
  * navigates, scrolling to its `#heading` when present. Returns false when the
  * target resolves to nothing (so the click falls through to normal behavior). (#201)
  */
-function followEditorLink(target: string): boolean {
-  const external = externalLinkUrl(target)
-  if (external) {
-    window.open(external, '_blank')
-    return true
-  }
-  const state = useStore.getState()
-  const focusSoon = (): void => {
-    state.setFocusedPanel('editor')
-    requestAnimationFrame(() => useStore.getState().editorViewRef?.focus())
-  }
-  const internal = resolveInternalNoteHref(state.selectedPath, target, state.notes)
-  if (internal) {
-    if (internal.heading) void openWikilinkHeading(internal.path, internal.heading).then(focusSoon)
-    else void state.selectNote(internal.path).then(focusSoon)
-    return true
-  }
-  const wikilink = resolveWikilinkTarget(state.notes, target)
-  if (wikilink) {
-    const heading = wikilinkHeadingAnchor(target)
-    if (heading) void openWikilinkHeading(wikilink.path, heading).then(focusSoon)
-    else void state.selectNote(wikilink.path).then(focusSoon)
-    return true
-  }
-  if (openDatabaseFromWikilink(target)) {
-    focusSoon()
-    return true
-  }
-  // A link to a file outside the vault (`~/…`, `file://…`, an absolute path):
-  // open it with the OS default app instead of treating it as a note. (#424)
-  if (externalFileLink(target)) {
-    void openExternalFileLink(target)
-    return true
-  }
-  // Dead link — don't leave it a silent dead end. Offer to create the note (with
-  // a confirmation), matching the `gd` follow-link path. (Discord: dead links)
-  void offerCreateNoteFromLink(target)
-  return true
-}
 
 const EMPTY_PANE_MODES: PaneModesByPath = {}
 
@@ -1663,7 +1616,7 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
                   const doc = view.state.doc.toString()
                   if (event.metaKey || event.ctrlKey) {
                     const linkTarget = extractLinkAtCursor(doc, pos)
-                    if (linkTarget && followEditorLink(linkTarget)) {
+                    if (linkTarget && followLinkTarget(linkTarget)) {
                       event.preventDefault()
                       return true
                     }
@@ -1672,7 +1625,7 @@ export function EditorPane({ pane }: { pane: PaneLeaf }): JSX.Element {
                     if (link) {
                       const sel = view.state.selection.main
                       const rendered = sel.to < link.from || sel.from > link.to
-                      if (rendered && followEditorLink(link.href)) {
+                      if (rendered && followLinkTarget(link.href)) {
                         event.preventDefault()
                         return true
                       }

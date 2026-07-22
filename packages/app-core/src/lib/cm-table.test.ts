@@ -5,7 +5,7 @@ import { forceParsing } from '@codemirror/language'
 import { history } from '@codemirror/commands'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   tablePlugin,
   nextWordStart,
@@ -365,6 +365,69 @@ describe('tablePlugin — column widths (#294)', () => {
     drag(view, 100, 140)
     const markers = view.state.doc.toString().match(/zen:cols/g) ?? []
     expect(markers.length).toBe(1)
+    view.destroy()
+  })
+})
+
+describe('table cell link following (#445)', () => {
+  const saved = {
+    notes: useStore.getState().notes,
+    selectNote: useStore.getState().selectNote,
+    selectedPath: useStore.getState().selectedPath,
+    vimMode: useStore.getState().vimMode
+  }
+  afterEach(() => {
+    useStore.setState(saved)
+    vi.restoreAllMocks()
+  })
+
+  function setup(vimMode: boolean): ReturnType<typeof vi.fn> {
+    const selectNote = vi.fn(async () => {})
+    useStore.setState({
+      vimMode,
+      selectedPath: 'Doc.md',
+      // Minimal note refs the resolvers need (title + folder + path).
+      notes: [{ path: 'Target-Note.md', title: 'Target-Note', folder: 'inbox' }],
+      selectNote
+    } as never)
+    return selectNote
+  }
+
+  const WIKILINK_DOC = '| A | B |\n| --- | --- |\n| x | [[Target-Note]] |'
+  const MDLINK_DOC = '| A | B |\n| --- | --- |\n| x | [go](Target-Note.md) |'
+
+  it('follows a [[wikilink]] in a cell on plain click instead of revealing raw source', () => {
+    const selectNote = setup(false)
+    const view = mount(WIKILINK_DOC)
+    const anchor = view.dom.querySelector<HTMLAnchorElement>('.cm-table-cell a.wikilink')
+    expect(anchor).toBeTruthy()
+    expect(anchor?.dataset.wikilink).toBe('Target-Note')
+    anchor?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }))
+    expect(selectNote).toHaveBeenCalledWith('Target-Note.md')
+    view.destroy()
+  })
+
+  it('follows a [text](Note.md) link in a cell on Cmd/Ctrl-click', () => {
+    const selectNote = setup(false)
+    const view = mount(MDLINK_DOC)
+    const anchor = view.dom.querySelector<HTMLAnchorElement>('.cm-table-cell a[href="Target-Note.md"]')
+    expect(anchor).toBeTruthy()
+    anchor?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, metaKey: true }))
+    expect(selectNote).toHaveBeenCalledWith('Target-Note.md')
+    view.destroy()
+  })
+
+  it('follows the link under the cursor on `gd` in a cell (Vim)', () => {
+    const selectNote = setup(true)
+    const view = mount(WIKILINK_DOC)
+    const cell = [...view.dom.querySelectorAll<HTMLElement>('.cm-table-cell')].find(
+      (c) => c.dataset.raw === '[[Target-Note]]'
+    )
+    expect(cell).toBeTruthy()
+    cell?.focus() // Vim: enter NORMAL mode in the cell (cursor at offset 0)
+    cell?.dispatchEvent(new KeyboardEvent('keydown', { key: 'g', bubbles: true }))
+    cell?.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }))
+    expect(selectNote).toHaveBeenCalledWith('Target-Note.md')
     view.destroy()
   })
 })

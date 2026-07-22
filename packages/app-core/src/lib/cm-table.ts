@@ -46,6 +46,16 @@ import { getCM } from '@replit/codemirror-vim'
 import { undo, redo } from '@codemirror/commands'
 import { useStore } from '../store'
 import { matchesSequenceToken } from './keymaps'
+import { followLinkTarget } from './follow-link'
+import { extractLinkAtCursor } from './internal-links'
+
+/** The follow target for a rendered link anchor inside a table cell: a
+ *  wikilink's name (`data-wikilink`) or a plain link's href. Returns null for
+ *  anchors that carry neither. */
+function linkTargetFromAnchor(anchor: HTMLAnchorElement): string | null {
+  if (anchor.classList.contains('wikilink')) return anchor.dataset.wikilink?.trim() || null
+  return anchor.getAttribute('href')?.trim() || null
+}
 
 /** True when the editor is in Vim mode — gates the table's modal (normal /
  *  insert) keyboard navigation. With Vim off, cells stay plain contenteditable
@@ -157,6 +167,8 @@ class TableWidget extends WidgetType {
   private pendingFind: 'f' | 'F' | 't' | 'T' | null = null
   /** Armed after `r`, waiting for the replacement character (#435). */
   private pendingReplace = false
+  /** Armed after `g`, waiting for the second key (`gd` follows a link) (#445). */
+  private pendingG = false
   /** Last `f`/`t` find, so `;`/`,` can repeat it. */
   private lastFind: { cmd: 'f' | 'F' | 't' | 'T'; ch: string } | null = null
   /** Set in toDOM — CodeMirror hands the live view there. Block widgets are
@@ -439,6 +451,7 @@ class TableWidget extends WidgetType {
         this.cellMode = 'normal'
         this.pendingOp = null
         this.pendingScope = null
+        this.pendingG = false
         this.visualMode = false
         this.visualScope = null
         const len = (editable.dataset.raw ?? '').length
@@ -455,6 +468,22 @@ class TableWidget extends WidgetType {
         editable.dataset.rendered = 'false'
         placeCaretEnd(editable)
       }
+    })
+    // Follow a rendered link (wikilink or Markdown link) inside the cell instead
+    // of dropping the caret into the raw source. Mirrors the main editor, where a
+    // rendered link follows on plain click and Cmd/Ctrl-click always follows —
+    // caught on mousedown (before focus reveals the source), so it works in both
+    // Vim and non-Vim mode. Only fires while the cell shows its anchors. (#445)
+    editable.addEventListener('mousedown', (event) => {
+      if (event.button !== 0) return
+      if (editable.dataset.rendered !== 'true') return
+      const anchor = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a')
+      if (!anchor || !editable.contains(anchor)) return
+      const target = linkTargetFromAnchor(anchor)
+      if (!target) return
+      event.preventDefault()
+      event.stopPropagation()
+      followLinkTarget(target)
     })
     editable.addEventListener('input', () => {
       this.dirty = true
@@ -718,6 +747,18 @@ class TableWidget extends WidgetType {
           }
           return
         }
+        if (this.pendingG) {
+          // Second key of `g`: `gd` follows the link under the cursor, matching
+          // the editor's go-to-definition motion. Anything else cancels (there's
+          // no `gg` in a single-line cell). (#445)
+          event.preventDefault()
+          this.pendingG = false
+          if (event.key === 'd') {
+            const target = extractLinkAtCursor(cellText, this.cursorOffset)
+            if (target) followLinkTarget(target)
+          }
+          return
+        }
         // Directional cell navigation. Honors the configurable nav keymaps
         // (defaults h/l/j/k) so non-QWERTY layouts can remap them (#213), and
         // arrow keys always work (#232). Only plain navigation is remappable —
@@ -826,6 +867,11 @@ class TableWidget extends WidgetType {
             this.enterInsertMode(editable, at)
             return
           }
+          case 'g':
+            // Arm `g`; the next key completes it (`gd` follows a link) (#445).
+            event.preventDefault()
+            this.pendingG = true
+            return
           case 'd':
             event.preventDefault()
             this.pendingOp = 'd'
