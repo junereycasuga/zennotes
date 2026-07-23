@@ -111,6 +111,7 @@ export const IPC = {
   APP_WRITE_EXTERNAL_FILE: 'app:write-external-file',
   APP_MOVE_EXTERNAL_FILE_TO_VAULT: 'app:move-external-file-to-vault',
   APP_OPEN_MARKDOWN_FILE: 'app:open-markdown-file',
+  APP_OPEN_FILE_DIALOG: 'app:open-file-dialog',
   APP_OPEN_FOLDER_TEMPORARY: 'app:open-folder-temporary',
   TIKZ_RENDER: 'tikz:render',
   MCP_STATUS: 'mcp:status',

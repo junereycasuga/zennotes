@@ -1294,6 +1294,11 @@ async function openMarkdownFile(_absPath: string): Promise<boolean> {
   return false
 }
 
+async function openFileDialog(): Promise<boolean> {
+  // Native "Open File…" picker is desktop-only (no OS file dialog on web).
+  return false
+}
+
 async function openFolderTemporary(_absPath: string): Promise<void> {
   // Temporary folder sessions are a desktop-only capability (no OS paths on web).
 }
@@ -1565,6 +1570,7 @@ export const httpBridge: ZenBridge = {
   writeExternalFile,
   moveExternalFileToVault,
   openMarkdownFile,
+  openFileDialog,
   openFolderTemporary,
   toggleQuickCapture,
   getQuickCaptureHotkey,

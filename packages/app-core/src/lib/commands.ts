@@ -1508,6 +1508,18 @@ export function buildCommands(options?: { includeUnavailable?: boolean }): Comma
       }
     },
     {
+      id: 'app.file.open',
+      title: 'Open File…',
+      category: 'Vault',
+      keywords: 'open file markdown external outside vault one-off document proofread standalone',
+      when: () =>
+        window.zen.getAppInfo().runtime === 'desktop' &&
+        window.zen.getCapabilities().supportsLocalFilesystemPickers,
+      run: async () => {
+        await window.zen.openFileDialog()
+      }
+    },
+    {
       id: 'app.vault.close',
       title: 'Close Current Vault',
       category: 'Vault',

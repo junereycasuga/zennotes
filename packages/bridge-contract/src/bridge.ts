@@ -245,6 +245,13 @@ export interface ZenBridge {
    * web bridge is a no-op that resolves to false.
    */
   openMarkdownFile(absPath: string): Promise<boolean>
+  /**
+   * Show a native "Open File…" picker for a markdown file and open the choice
+   * the same vault-aware way as `openMarkdownFile` — the in-app equivalent of
+   * the Finder "Open in ZenNotes" entry (#449). Resolves to true when a file
+   * was opened. Desktop only; the web bridge resolves to false.
+   */
+  openFileDialog(): Promise<boolean>
   toggleQuickCapture(): Promise<void>
   getQuickCaptureHotkey(): Promise<string>
   setQuickCaptureHotkey(hotkey: string): Promise<{ ok: boolean; hotkey: string; error?: string }>

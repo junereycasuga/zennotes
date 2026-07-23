@@ -194,6 +194,7 @@ import {
 } from './deep-links'
 import {
   isMarkdownFilePath,
+  MARKDOWN_FILE_EXTENSIONS,
   candidatePathsFromArgv,
   resolveMarkdownOpenTarget
 } from './file-open'
@@ -532,6 +533,31 @@ async function openMarkdownFileFromOS(absPath: string, reuseMainWindow: boolean)
 
   openExternalFileWindow(target.absPath)
   return true
+}
+
+/**
+ * In-app "Open File…" (#449) — show a native picker for a markdown file and
+ * route the choice through the same vault-aware opener as the Finder "Open in
+ * ZenNotes" entry and drag-and-drop: a file inside a known vault opens against
+ * that vault, anything else opens in a standalone external-file window.
+ * Resolves true when a file was opened.
+ */
+async function openMarkdownFileViaDialog(parentWindow?: BrowserWindow): Promise<boolean> {
+  const options: Electron.OpenDialogOptions = {
+    title: 'Open Markdown File',
+    buttonLabel: 'Open',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Markdown', extensions: MARKDOWN_FILE_EXTENSIONS.map((e) => e.replace(/^\./, '')) },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  }
+  const result =
+    parentWindow && !parentWindow.isDestroyed()
+      ? await dialog.showOpenDialog(parentWindow, options)
+      : await dialog.showOpenDialog(options)
+  if (result.canceled || result.filePaths.length === 0) return false
+  return await openMarkdownFileFromOS(path.resolve(result.filePaths[0]), false)
 }
 
 // A folder dropped on the app icon (or `zn open <dir>`) opens as a temporary
@@ -2882,6 +2908,13 @@ function registerIpc(): void {
     return await openMarkdownFileFromOS(path.resolve(rawPath), false)
   })
 
+  // In-app "Open File…" (#449): pop a native picker from the focused window and
+  // open the chosen markdown file the same vault-aware way as drag-and-drop.
+  handle(IPC.APP_OPEN_FILE_DIALOG, async (event): Promise<boolean> => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return await openMarkdownFileViaDialog(win ?? undefined)
+  })
+
   handle(IPC.APP_OPEN_FOLDER_TEMPORARY, async (_event, rawPath: string): Promise<void> => {
     if (typeof rawPath !== 'string' || !rawPath.trim()) return
     let stat
@@ -3350,6 +3383,13 @@ function installAppMenu(): void {
     {
       label: 'File',
       submenu: [
+        {
+          label: 'Open File…',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => {
+            void openMarkdownFileViaDialog(BrowserWindow.getFocusedWindow() ?? mainWindow)
+          }
+        },
         {
           label: 'Open Vault in New Window…',
           accelerator: 'CmdOrCtrl+Shift+O',
