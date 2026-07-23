@@ -5145,3 +5145,37 @@ html[data-completed-task-style="gray-strikethrough"] .prose-zen li.task-list-ite
 .cm-wysiwyg .cm-editor .cm-hashtag:hover {
   background-color: rgb(var(--z-accent) / 0.2);
 }
+
+/* Task metadata on task lines (#454): priorities, due dates, and @fields get
+   the same at-a-glance cues as the Tasks view, so they stand out from the task
+   text in source notes. Priority is coloured text (like the Tasks view); due
+   dates and @fields are small chips. */
+.cm-wysiwyg .cm-editor .cm-task-prio {
+  font-weight: 600;
+}
+.cm-wysiwyg .cm-editor .cm-task-prio-high {
+  color: rgb(var(--z-red));
+}
+.cm-wysiwyg .cm-editor .cm-task-prio-med {
+  color: rgb(var(--z-yellow));
+}
+.cm-wysiwyg .cm-editor .cm-task-prio-low {
+  color: rgb(var(--z-blue));
+}
+.cm-wysiwyg .cm-editor .cm-task-meta {
+  border-radius: 0.35em;
+  padding: 0 0.3em;
+  font-size: 0.92em;
+}
+.cm-wysiwyg .cm-editor .cm-task-due {
+  color: rgb(var(--z-blue));
+  background-color: rgb(var(--z-blue) / 0.12);
+}
+.cm-wysiwyg .cm-editor .cm-task-due-overdue {
+  color: rgb(var(--z-red));
+  background-color: rgb(var(--z-red) / 0.14);
+}
+.cm-wysiwyg .cm-editor .cm-task-field {
+  color: rgb(var(--z-purple));
+  background-color: rgb(var(--z-purple) / 0.12);
+}
