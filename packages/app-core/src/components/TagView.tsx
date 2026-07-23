@@ -465,7 +465,10 @@ export function TagView(): JSX.Element {
                   <span className="w-16 shrink-0 pt-1 text-2xs font-semibold uppercase tracking-wider text-current/40">
                     Tags
                   </span>
-                  <div className="flex min-w-0 flex-1 flex-col gap-px">
+                  {/* Cap the tag list so a vault with many tags scrolls here
+                      instead of pushing the results (and the app frame) off the
+                      bottom of the viewport. (#451) */}
+                  <div className="flex max-h-[40vh] min-w-0 flex-1 flex-col gap-px overflow-y-auto overscroll-contain">
                     {tagTreeRows.map((node) => {
                       const hasChildren = node.children.length > 0
                       const collapsed = collapsedTagSet.has(node.path)
@@ -536,23 +539,27 @@ export function TagView(): JSX.Element {
                 </div>
               )
             : allTags.length > selectedTags.length && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="w-16 shrink-0 text-2xs font-semibold uppercase tracking-wider text-current/40">
+                <div className="flex items-start gap-1.5">
+                  <span className="w-16 shrink-0 pt-1 text-2xs font-semibold uppercase tracking-wider text-current/40">
                     {selectedTags.length > 0 ? 'Add' : 'Tags'}
                   </span>
-                  {allTags
-                    .filter(([t]) => !selectedTags.includes(t))
-                    .map(([t, count]) => (
-                      <button
-                        key={`pick-${t}`}
-                        type="button"
-                        onClick={() => toggleTagSelection(t)}
-                        className="rounded-full bg-current/5 px-2 py-0.5 text-xs text-current/70 hover:bg-current/15 hover:text-current/90"
-                      >
-                        #{t}
-                        <span className="ml-1 text-current/40">{count}</span>
-                      </button>
-                    ))}
+                  {/* Cap the tag chips so many tags scroll here rather than
+                      overflowing the app frame. (#451) */}
+                  <div className="flex max-h-[40vh] min-w-0 flex-1 flex-wrap items-center gap-1.5 overflow-y-auto overscroll-contain">
+                    {allTags
+                      .filter(([t]) => !selectedTags.includes(t))
+                      .map(([t, count]) => (
+                        <button
+                          key={`pick-${t}`}
+                          type="button"
+                          onClick={() => toggleTagSelection(t)}
+                          className="rounded-full bg-current/5 px-2 py-0.5 text-xs text-current/70 hover:bg-current/15 hover:text-current/90"
+                        >
+                          #{t}
+                          <span className="ml-1 text-current/40">{count}</span>
+                        </button>
+                      ))}
+                  </div>
                 </div>
               )}
         </div>

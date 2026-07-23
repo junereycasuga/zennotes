@@ -1450,6 +1450,23 @@ textarea,
   border: 2px solid transparent;
 }
 
+/* The sidebar is one scroll region for all its sections (Quick access, Notes,
+   Tags, System). With many tags/notes it scrolls, but the global thumb — a dark
+   shadow colour at 18% — is nearly invisible on a dark sidebar, so the scroll
+   affordance reads as "the list is just cut off". Tint this scroller's thumb
+   with the sidebar's own foreground (currentColor adapts to light/dark themes
+   and the dark-sidebar option) at a higher opacity so it's discoverable. (#451) */
+.zn-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: currentColor;
+  background-clip: padding-box;
+  opacity: 0.3;
+}
+.zn-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: currentColor;
+  background-clip: padding-box;
+  opacity: 0.5;
+}
+
 /* Keep the horizontal tab-strip scrollbar slim (6px) so it doesn't eat into the
    tab height and clip titles in Compact density (#421). NOTE: do not set the
    standard `scrollbar-color`/`scrollbar-width` here — in Chromium those opt the
