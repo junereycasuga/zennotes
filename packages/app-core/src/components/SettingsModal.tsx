@@ -449,6 +449,8 @@ export function SettingsModal(): JSX.Element {
   );
   const markdownSnippets = useStore((s) => s.markdownSnippets);
   const setMarkdownSnippets = useStore((s) => s.setMarkdownSnippets);
+  const autoPairs = useStore((s) => s.autoPairs);
+  const setAutoPairs = useStore((s) => s.setAutoPairs);
   const tabsEnabled = useStore((s) => s.tabsEnabled);
   const setTabsEnabled = useStore((s) => s.setTabsEnabled);
   const wrapTabs = useStore((s) => s.wrapTabs);
@@ -1833,6 +1835,21 @@ export function SettingsModal(): JSX.Element {
           ],
         },
         {
+          id: "auto-pairs",
+          title: "Auto-pair parentheses and braces",
+          description:
+            "Insert matching () and {} as you type, including in Vim insert mode.",
+          keywords: [
+            "auto pair",
+            "autopair",
+            "parentheses",
+            "braces",
+            "brackets",
+            "completion",
+            "vim",
+          ],
+        },
+        {
           id: "note-tabs",
           title: "Note tabs",
           description:
@@ -2090,6 +2107,7 @@ export function SettingsModal(): JSX.Element {
             "live-preview",
             "render-tables",
             "markdown-overrides",
+            "auto-pairs",
             "note-tabs",
             "wrap-note-tabs",
             "word-wrap",
@@ -2164,6 +2182,13 @@ export function SettingsModal(): JSX.Element {
                   value={markdownSnippets}
                   settingId="markdown-overrides"
                   onChange={setMarkdownSnippets}
+                />
+                <ToggleRow
+                  label="Auto-pair parentheses and braces"
+                  description="Insert matching () and {} as you type, wrap selected text, and skip over a closing delimiter that is already present. In Vim mode this only applies in insert mode."
+                  value={autoPairs}
+                  settingId="auto-pairs"
+                  onChange={setAutoPairs}
                 />
                 <ToggleRow
                   label="Note tabs"

@@ -102,6 +102,11 @@ const SCALAR_FIELDS: Partial<Record<PortablePrefKey, ScalarFieldMap>> = {
     tomlKey: 'markdown_snippets',
     comment: 'auto-close markdown delimiters while typing'
   },
+  autoPairs: {
+    section: 'editor',
+    tomlKey: 'auto_pairs',
+    comment: 'auto-insert matching () and {} while typing'
+  },
   hideBuiltinTemplates: {
     section: 'editor',
     tomlKey: 'hide_builtin_templates',
