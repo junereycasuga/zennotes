@@ -542,7 +542,9 @@ async function openMarkdownFileFromOS(absPath: string, reuseMainWindow: boolean)
  * that vault, anything else opens in a standalone external-file window.
  * Resolves true when a file was opened.
  */
-async function openMarkdownFileViaDialog(parentWindow?: BrowserWindow): Promise<boolean> {
+async function openMarkdownFileViaDialog(
+  parentWindow?: BrowserWindow | null
+): Promise<boolean> {
   const options: Electron.OpenDialogOptions = {
     title: 'Open Markdown File',
     buttonLabel: 'Open',
