@@ -451,6 +451,10 @@ export function SettingsModal(): JSX.Element {
   const setMarkdownSnippets = useStore((s) => s.setMarkdownSnippets);
   const autoPairs = useStore((s) => s.autoPairs);
   const setAutoPairs = useStore((s) => s.setAutoPairs);
+  const autoPairQuotesInProse = useStore((s) => s.autoPairQuotesInProse);
+  const setAutoPairQuotesInProse = useStore(
+    (s) => s.setAutoPairQuotesInProse,
+  );
   const tabsEnabled = useStore((s) => s.tabsEnabled);
   const setTabsEnabled = useStore((s) => s.setTabsEnabled);
   const wrapTabs = useStore((s) => s.wrapTabs);
@@ -1836,18 +1840,27 @@ export function SettingsModal(): JSX.Element {
         },
         {
           id: "auto-pairs",
-          title: "Auto-pair parentheses and braces",
+          title: "Auto-pair brackets and delimiters",
           description:
-            "Insert matching () and {} as you type, including in Vim insert mode.",
+            "Insert matching [] () and {} as you type; quotes pair in fenced code blocks.",
           keywords: [
             "auto pair",
             "autopair",
             "parentheses",
             "braces",
             "brackets",
+            "quotes",
+            "code blocks",
             "completion",
             "vim",
           ],
+        },
+        {
+          id: "auto-pair-quotes-in-prose",
+          title: "Auto-pair quotes in prose",
+          description:
+            "Also insert matching quotes outside fenced code blocks.",
+          keywords: ["auto pair", "autopair", "quotes", "prose", "code blocks"],
         },
         {
           id: "note-tabs",
@@ -2108,6 +2121,7 @@ export function SettingsModal(): JSX.Element {
             "render-tables",
             "markdown-overrides",
             "auto-pairs",
+            "auto-pair-quotes-in-prose",
             "note-tabs",
             "wrap-note-tabs",
             "word-wrap",
@@ -2184,11 +2198,18 @@ export function SettingsModal(): JSX.Element {
                   onChange={setMarkdownSnippets}
                 />
                 <ToggleRow
-                  label="Auto-pair parentheses and braces"
-                  description="Insert matching () and {} as you type, wrap selected text, and skip over a closing delimiter that is already present. In Vim mode this only applies in insert mode."
+                  label="Auto-pair brackets and delimiters"
+                  description="Insert matching [] () and {} as you type, wrap selected text, and skip over a closing delimiter that is already present. Quotes pair inside fenced code blocks. In Vim mode this only applies in insert mode."
                   value={autoPairs}
                   settingId="auto-pairs"
                   onChange={setAutoPairs}
+                />
+                <ToggleRow
+                  label="Auto-pair quotes in prose"
+                  description={'Also insert matching "" and \'\' outside fenced code blocks. Requires auto-pair brackets and delimiters.'}
+                  value={autoPairQuotesInProse}
+                  settingId="auto-pair-quotes-in-prose"
+                  onChange={setAutoPairQuotesInProse}
                 />
                 <ToggleRow
                   label="Note tabs"

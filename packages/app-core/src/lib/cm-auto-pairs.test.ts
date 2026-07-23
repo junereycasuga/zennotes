@@ -7,7 +7,8 @@ import { vim } from '@replit/codemirror-vim'
 import {
   autoPairBackspaceTransaction,
   autoPairExtension,
-  autoPairInputTransaction
+  autoPairInputTransaction,
+  isInFencedCodeBlock
 } from './cm-auto-pairs'
 import { vimAwareDefaultKeymap, vimAwareMarkdownKeymap } from './cm-vim-default-keymap'
 
@@ -18,6 +19,7 @@ function state(doc: string, anchor = doc.length, head = anchor): EditorState {
 describe('autoPairInputTransaction', () => {
   it.each([
     ['(', ')'],
+    ['[', ']'],
     ['{', '}']
   ])('inserts %s with its matching closer', (open, close) => {
     const next = state('').update(autoPairInputTransaction(state(''), 0, 0, open)!).state
@@ -43,6 +45,23 @@ describe('autoPairInputTransaction', () => {
     expect(next.selection.main.head).toBe(2)
   })
 
+  it.each(['"', "'"])('pairs %s only when quotes are enabled', (quote) => {
+    const current = state('')
+    expect(autoPairInputTransaction(current, 0, 0, quote)).toBeNull()
+
+    const next = current.update(autoPairInputTransaction(current, 0, 0, quote, true)!).state
+    expect(next.doc.toString()).toBe(quote + quote)
+    expect(next.selection.main.head).toBe(1)
+  })
+
+  it('skips an existing generated quote and leaves contractions alone', () => {
+    const quoted = state('""', 1)
+    const skipped = quoted.update(autoPairInputTransaction(quoted, 1, 1, '"', true)!).state
+    expect(skipped.selection.main.head).toBe(2)
+
+    expect(autoPairInputTransaction(state('don', 3), 3, 3, "'", true)).toBeNull()
+  })
+
   it('does not handle unrelated or multi-character input', () => {
     const current = state('')
     expect(autoPairInputTransaction(current, 0, 0, 'x')).toBeNull()
@@ -61,6 +80,25 @@ describe('autoPairBackspaceTransaction', () => {
 
   it('leaves non-empty pairs to normal backspace behavior', () => {
     expect(autoPairBackspaceTransaction(state('{x}', 1))).toBeNull()
+  })
+
+  it('removes empty quotes when quote pairing is enabled', () => {
+    const current = state("''", 1)
+    const next = current.update(autoPairBackspaceTransaction(current, true)!).state
+    expect(next.doc.toString()).toBe('')
+  })
+})
+
+describe('isInFencedCodeBlock', () => {
+  it('identifies code content but not Markdown prose', () => {
+    const doc = 'Prose\n\n```ts\nconst value = \n```'
+    const current = EditorState.create({
+      doc,
+      extensions: [markdown({ base: markdownLanguage, addKeymap: false })]
+    })
+
+    expect(isInFencedCodeBlock(current, 2)).toBe(false)
+    expect(isInFencedCodeBlock(current, doc.indexOf('const') + 'const value = '.length)).toBe(true)
   })
 })
 

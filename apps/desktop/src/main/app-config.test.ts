@@ -99,6 +99,7 @@ describe('TOML serialization', () => {
       themeFamily: 'nord',
       themeMode: 'dark',
       autoPairs: false,
+      autoPairQuotesInProse: true,
       vaultTextSearchBackend: 'ripgrep',
       ripgrepBinaryPath: null,
       interfaceFont: null,
@@ -119,6 +120,7 @@ describe('TOML serialization', () => {
     expect(round.editorLineHeight).toBeCloseTo(1.6)
     expect(round.themeFamily).toBe('nord')
     expect(round.autoPairs).toBe(false)
+    expect(round.autoPairQuotesInProse).toBe(true)
     expect(round.vaultTextSearchBackend).toBe('ripgrep')
     expect(round.keymapOverrides).toEqual({ 'global.searchNotes': 'Mod+P' })
     expect(round.kanbanColumnTitles).toEqual({ 'status:todo': 'To Do' })
@@ -139,7 +141,10 @@ describe('TOML serialization', () => {
     expect(text).toContain('theme_mode = "dark"  # light | dark | auto')
     expect(text).toContain('backend = "auto"  # auto | builtin | ripgrep | fzf')
     expect(text).toContain('font_size = 16')
-    expect(text).toContain('auto_pairs = true  # auto-insert matching () and {} while typing')
+    expect(text).toContain('auto_pairs = true  # auto-insert matching [] () and {} while typing')
+    expect(text).toContain(
+      'auto_pair_quotes_in_prose = false  # also auto-insert matching quotes outside fenced code blocks'
+    )
     expect(text).toContain('[vim]')
     expect(text).toContain('[view]')
     // Keymaps: every action listed as a commented, grouped default reference.

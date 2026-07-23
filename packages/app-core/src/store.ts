@@ -411,8 +411,10 @@ interface Prefs {
   /** Auto-close markdown delimiters while typing: `**`+Space → `**|**`,
    *  ```` ``` ````+Enter expands a fenced block. Off restores plain typing. */
   markdownSnippets: boolean
-  /** Auto-insert matching `()` and `{}` delimiters while typing. */
+  /** Auto-insert matching `[]`, `()`, and `{}` delimiters while typing. */
   autoPairs: boolean
+  /** Also auto-insert matching quotes outside fenced code blocks. */
+  autoPairQuotesInProse: boolean
   hideBuiltinTemplates: boolean // hide shipped built-in templates from the pickers
   tabsEnabled: boolean
   wrapTabs: boolean
@@ -740,6 +742,7 @@ export const DEFAULT_PREFS: Prefs = {
   keepViewModeAcrossNotes: false,
   markdownSnippets: true,
   autoPairs: true,
+  autoPairQuotesInProse: false,
   hideBuiltinTemplates: false,
   tabsEnabled: true,
   wrapTabs: false,
@@ -884,6 +887,10 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
         ? p.markdownSnippets
         : DEFAULT_PREFS.markdownSnippets,
     autoPairs: typeof p.autoPairs === 'boolean' ? p.autoPairs : DEFAULT_PREFS.autoPairs,
+    autoPairQuotesInProse:
+      typeof p.autoPairQuotesInProse === 'boolean'
+        ? p.autoPairQuotesInProse
+        : DEFAULT_PREFS.autoPairQuotesInProse,
     hideBuiltinTemplates:
       typeof p.hideBuiltinTemplates === 'boolean'
         ? p.hideBuiltinTemplates
@@ -1694,6 +1701,7 @@ function collectPrefs(s: {
   keepViewModeAcrossNotes: boolean
   markdownSnippets: boolean
   autoPairs: boolean
+  autoPairQuotesInProse: boolean
   hideBuiltinTemplates: boolean
   tabsEnabled: boolean
   wrapTabs: boolean
@@ -1771,6 +1779,7 @@ function collectPrefs(s: {
     keepViewModeAcrossNotes: s.keepViewModeAcrossNotes,
     markdownSnippets: s.markdownSnippets,
     autoPairs: s.autoPairs,
+    autoPairQuotesInProse: s.autoPairQuotesInProse,
     hideBuiltinTemplates: s.hideBuiltinTemplates,
     tabsEnabled: s.tabsEnabled,
     wrapTabs: s.wrapTabs,
@@ -2226,8 +2235,10 @@ interface Store {
   keepViewModeAcrossNotes: boolean
   /** Auto-close markdown delimiters while typing. Persisted. */
   markdownSnippets: boolean
-  /** Auto-insert matching `()` and `{}` delimiters while typing. Persisted. */
+  /** Auto-insert matching `[]`, `()`, and `{}` delimiters while typing. Persisted. */
   autoPairs: boolean
+  /** Also auto-insert matching quotes outside fenced code blocks. Persisted. */
+  autoPairQuotesInProse: boolean
   hideBuiltinTemplates: boolean
   tabsEnabled: boolean
   wrapTabs: boolean
@@ -2622,6 +2633,7 @@ interface Store {
   setKeepViewModeAcrossNotes: (on: boolean) => void
   setMarkdownSnippets: (on: boolean) => void
   setAutoPairs: (on: boolean) => void
+  setAutoPairQuotesInProse: (on: boolean) => void
   setHideBuiltinTemplates: (hidden: boolean) => void
   setTabsEnabled: (on: boolean) => void
   setWrapTabs: (on: boolean) => void
@@ -3775,6 +3787,7 @@ export const useStore = create<Store>((set, get) => {
   keepViewModeAcrossNotes: loadPrefs().keepViewModeAcrossNotes,
   markdownSnippets: loadPrefs().markdownSnippets,
   autoPairs: loadPrefs().autoPairs,
+  autoPairQuotesInProse: loadPrefs().autoPairQuotesInProse,
   hideBuiltinTemplates: loadPrefs().hideBuiltinTemplates,
   tabsEnabled: loadPrefs().tabsEnabled,
   wrapTabs: loadPrefs().wrapTabs,
@@ -5886,6 +5899,10 @@ export const useStore = create<Store>((set, get) => {
   },
   setAutoPairs: (on) => {
     set({ autoPairs: on })
+    savePrefs(collectPrefs(get()))
+  },
+  setAutoPairQuotesInProse: (on) => {
+    set({ autoPairQuotesInProse: on })
     savePrefs(collectPrefs(get()))
   },
   setHideBuiltinTemplates: (hidden) => {
