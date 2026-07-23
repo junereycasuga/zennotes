@@ -2204,13 +2204,15 @@ export function SettingsModal(): JSX.Element {
                   settingId="auto-pairs"
                   onChange={setAutoPairs}
                 />
-                <ToggleRow
-                  label="Auto-pair quotes in prose"
-                  description={'Also insert matching "" and \'\' outside fenced code blocks. Requires auto-pair brackets and delimiters.'}
-                  value={autoPairQuotesInProse}
-                  settingId="auto-pair-quotes-in-prose"
-                  onChange={setAutoPairQuotesInProse}
-                />
+                {autoPairs && (
+                  <ToggleRow
+                    label="Auto-pair quotes in prose"
+                    description={'Also insert matching "" and \'\' outside fenced code blocks.'}
+                    value={autoPairQuotesInProse}
+                    settingId="auto-pair-quotes-in-prose"
+                    onChange={setAutoPairQuotesInProse}
+                  />
+                )}
                 <ToggleRow
                   label="Note tabs"
                   description="Open notes in tabs and allow split-friendly tab workflows. Turn off to keep the simpler single-note behavior."
