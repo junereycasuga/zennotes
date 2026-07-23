@@ -12,14 +12,15 @@ import { advanceSequence, getKeymapBinding, matchesSequenceToken } from '../lib/
 import { isImeComposing } from '../lib/ime'
 import { isAppOverlayOpen } from '../lib/overlay-open'
 
-type GroupKey = 'today' | 'upcoming' | 'waiting' | 'forwarded' | 'done'
+type GroupKey = 'today' | 'upcoming' | 'waiting' | 'forwarded' | 'done' | 'cancelled'
 
 const GROUP_LABELS: Record<GroupKey, string> = {
   today: 'Today',
   upcoming: 'Upcoming',
   waiting: 'Waiting',
   forwarded: 'Forwarded',
-  done: 'Done'
+  done: 'Done',
+  cancelled: 'Cancelled'
 }
 
 const VIEW_BUTTONS: Array<{
@@ -49,6 +50,7 @@ export function TasksView(): JSX.Element {
   const refreshTasks = useStore((s) => s.refreshTasks)
   const openTaskAt = useStore((s) => s.openTaskAt)
   const toggleTaskFromList = useStore((s) => s.toggleTaskFromList)
+  const cancelTaskFromList = useStore((s) => s.cancelTaskFromList)
   const applyTaskMutation = useStore((s) => s.applyTaskMutation)
   const moveTaskToDate = useStore((s) => s.moveTaskToDate)
   const addTaskForDate = useStore((s) => s.addTaskForDate)
@@ -81,7 +83,8 @@ export function TasksView(): JSX.Element {
     upcoming: false,
     waiting: false,
     forwarded: true,
-    done: true
+    done: true,
+    cancelled: true
   })
 
   // Keep a just-toggled task in its pre-toggle group for TASK_LINGER_MS so it
@@ -495,6 +498,12 @@ export function TasksView(): JSX.Element {
         void forwardTaskWithPicker(currentTask)
         return
       }
+      // Cancel / un-cancel the selected task (#450). Vim-gated single key.
+      if (vimMode && key === 'c' && currentTask) {
+        consume()
+        void cancelTaskFromList(currentTask)
+        return
+      }
     }
     window.addEventListener('keydown', handler, true)
     return () => window.removeEventListener('keydown', handler, true)
@@ -510,6 +519,7 @@ export function TasksView(): JSX.Element {
     vimMode,
     openTaskAt,
     lingerToggle,
+    cancelTaskFromList,
     closeTasksView,
     setFilter,
     viewMode,
@@ -714,7 +724,7 @@ export function TasksView(): JSX.Element {
       ) : (
         <div className="border-t border-paper-300/45 px-4 py-1.5 text-xs text-current/40">
           {viewMode === 'list'
-            ? 'j/k move · J/K reorder · drag to reorder · Enter/o open · Space/x toggle · / filter · :q close'
+            ? 'j/k move · J/K reorder · Enter/o open · Space/x toggle · c cancel · / filter · :q close'
             : viewMode === 'calendar'
               ? 'h/j/k/l day · [ ] month · gt today · Tab pick · < > reschedule · drag to move · Enter open · :q'
               : 'h/l column · j/k card · Space toggle · Enter open · 1/2/3 view · : command · :q close'}

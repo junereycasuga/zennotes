@@ -1781,9 +1781,15 @@ textarea,
   margin-right: 0.15em;
 }
 
-/* Forwarded task marker `- [>]` (#316) — an arrow, sized to sit like the
-   checkbox. Uses the accent so a forwarded task reads as "sent onward". */
-.cm-editor .cm-task-forwarded {
+/* Forwarded (`- [>]`, #316) and cancelled (`- [-]`, #450) task markers: an
+   inline-flex box sized and centred exactly like `.cm-task-checkbox` (the list
+   bullet is hidden for these lines). The glyph is a mask-clipped solid box —
+   NOT a font character — because the `→`/`✕` glyphs in many monospace fonts
+   carry heavy side-bearings that paint the character well left of its advance
+   box (~15px off from the checkbox column). An SVG mask is geometric, so it
+   centres perfectly in the column no matter which editor font the user picks. */
+.cm-editor .cm-task-forwarded,
+.cm-editor .cm-task-cancelled-marker {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1791,10 +1797,43 @@ textarea,
   width: 1.05em;
   height: 1.05em;
   margin-right: 0.15em;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--z-accent-fg, var(--z-accent, currentColor));
-  opacity: 0.85;
+}
+.cm-editor .cm-task-forwarded::before,
+.cm-editor .cm-task-cancelled-marker::before {
+  content: "";
+  width: 0.9em;
+  height: 0.9em;
+  background-color: currentColor;
+  -webkit-mask: center / contain no-repeat;
+  mask: center / contain no-repeat;
+}
+
+/* Forwarded: an accent arrow, "sent onward". */
+.cm-editor .cm-task-forwarded {
+  color: rgb(var(--z-accent));
+}
+.cm-editor .cm-task-forwarded::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12h15M13 6l7 6-7 6'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12h15M13 6l7 6-7 6'/%3E%3C/svg%3E");
+}
+
+/* Cancelled: a muted ✕, matching the struck-through text. */
+.cm-editor .cm-task-cancelled-marker {
+  color: rgb(var(--z-grey-0, 128 128 128));
+}
+.cm-editor .cm-task-cancelled-marker::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+}
+.cm-editor .cm-task-cancelled {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgb(var(--z-grey-0, 128 128 128));
+  color: rgb(var(--z-grey-0, 128 128 128));
+}
+/* Gray the token spans CodeMirror nests inside the cancelled text too. */
+.cm-editor .cm-task-cancelled * {
+  color: rgb(var(--z-grey-0, 128 128 128)) !important;
 }
 
 .cm-editor .cm-task-checkbox-input {

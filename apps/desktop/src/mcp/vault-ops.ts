@@ -148,9 +148,9 @@ async function folderRoot(root: string, folder: NoteFolder): Promise<string> {
 }
 
 const FENCE_LINE_RE = /^(\s{0,3})(`{3,}|~{3,})/
-// `>` = forwarded to another note (#316) — recognized so forwarded tasks aren't
-// invisible to the MCP scanner. Kept in sync with @shared/tasklists.
-const TASK_LINE_RE = /^\s*[-*+]\s+\[([ xX>])\](.*)$/
+// `>` = forwarded (#316), `-` = cancelled (#450) — both recognized so those
+// tasks aren't invisible to the MCP scanner. Kept in sync with @shared/tasklists.
+const TASK_LINE_RE = /^\s*[-*+]\s+\[([ xX>-])\](.*)$/
 
 export interface NoteMeta {
   path: string
@@ -178,6 +178,8 @@ export interface VaultTask {
   rawText: string
   content: string
   checked: boolean
+  /** True for a `[-]` cancelled task — intentionally abandoned (#450). */
+  cancelled?: boolean
   due?: string
   priority?: 'high' | 'med' | 'low'
   waiting: boolean
@@ -973,6 +975,7 @@ function parseTasksFromBody(
     const checkedChar = m[1]
     const tail = m[2]
     const checked = checkedChar === 'x' || checkedChar === 'X'
+    const cancelled = checkedChar === '-'
 
     let due: string | undefined
     let priority: 'high' | 'med' | 'low' | undefined
@@ -1012,6 +1015,7 @@ function parseTasksFromBody(
       rawText: line,
       content,
       checked,
+      cancelled,
       due: due ?? defaults.due,
       priority: priority ?? defaults.priority,
       waiting,
@@ -1030,6 +1034,9 @@ const TASK_FILE_TAG = 'task'
 
 /** Frontmatter `status:` values treated as complete (checked). */
 const DONE_STATUSES = new Set(['done', 'complete', 'completed', 'x'])
+
+/** Frontmatter `status:` values treated as cancelled — abandoned (#450). */
+const CANCELLED_STATUSES = new Set(['cancelled', 'canceled'])
 
 /** Parse a leading frontmatter block into flat fields, handling scalars, inline
  *  arrays (`tags: [a, b]`) and block lists (`tags:` then `  - a`). Keys are
@@ -1115,6 +1122,7 @@ function parseTaskFile(
     rawText: '',
     content: title,
     checked: DONE_STATUSES.has(status),
+    cancelled: CANCELLED_STATUSES.has(status),
     due: normalizeDueDate(firstScalar(fm.due)),
     priority: normalizePriority(firstScalar(fm.priority)),
     waiting: status === 'waiting',

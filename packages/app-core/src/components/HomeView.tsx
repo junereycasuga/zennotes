@@ -24,7 +24,8 @@ const NO_COLLAPSE = {
   upcoming: false,
   waiting: false,
   forwarded: false,
-  done: false
+  done: false,
+  cancelled: false
 }
 
 function greetingFor(date: Date): string {

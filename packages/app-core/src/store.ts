@@ -29,6 +29,7 @@ import { TASKS_TAB_PATH, isTasksTabPath, parseTasksFromBody, toIsoDateLocal } fr
 import {
   composeTaskFile,
   setTaskFileStatus,
+  setTaskFileCancelled,
   taskFilePriorityValue,
   updateFrontmatterFields
 } from '@shared/frontmatter'
@@ -61,6 +62,7 @@ import {
   setTaskCheckedAtIndex,
   setTaskDueAtIndex,
   setTaskForwardedAtIndex,
+  setTaskCancelledAtIndex,
   setTaskPriorityAtIndex,
   setTaskFieldAtIndex,
   setTaskTextAtIndex,
@@ -2486,6 +2488,9 @@ interface Store {
   /** Flip a task's checkbox. Reuses `toggleTaskAtIndex` so the file round-
    *  trips exactly — works whether or not the note is currently open. */
   toggleTaskFromList: (task: VaultTask) => Promise<void>
+  /** Toggle a task's cancelled state (`[-]` inline, `status: cancelled` for a
+   *  file-task). Cancelled = intentionally abandoned, distinct from done. (#450) */
+  cancelTaskFromList: (task: VaultTask) => Promise<void>
   /** Apply one or more structured mutations to the task line on disk
    *  and reflect them locally. Used by the Kanban DnD pipeline to
    *  flip checked / waiting / priority without forcing the user to
@@ -4479,6 +4484,40 @@ export const useStore = create<Store>((set, get) => {
           ? task.kind === 'file'
             ? { ...t, checked: nextChecked, status: nextStatus, fields: { ...t.fields, status: nextStatus } }
             : { ...t, checked: nextChecked }
+          : t
+      )
+    }))
+  },
+
+  cancelTaskFromList: async (task) => {
+    const path = task.sourcePath
+    const openBuffer = get().noteContents[path]
+    const body = openBuffer?.body ?? (await window.zen.readNote(path)).body
+    const nextCancelled = !task.cancelled
+    const nextBody =
+      task.kind === 'file'
+        ? setTaskFileCancelled(body, nextCancelled)
+        : setTaskCancelledAtIndex(body, task.taskIndex, nextCancelled)
+    if (nextBody === body) return
+
+    if (openBuffer) {
+      get().updateNoteBody(path, nextBody)
+    } else {
+      try {
+        await window.zen.writeNote(path, nextBody)
+      } catch (err) {
+        console.error('writeNote (cancel) failed', err)
+        return
+      }
+    }
+
+    const nextStatus = nextCancelled ? 'cancelled' : 'open'
+    set((s) => ({
+      vaultTasks: s.vaultTasks.map((t) =>
+        t.sourcePath === path && t.taskIndex === task.taskIndex
+          ? task.kind === 'file'
+            ? { ...t, cancelled: nextCancelled, status: nextStatus, fields: { ...t.fields, status: nextStatus } }
+            : { ...t, cancelled: nextCancelled }
           : t
       )
     }))

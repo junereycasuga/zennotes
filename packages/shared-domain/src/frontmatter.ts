@@ -71,6 +71,16 @@ export function setTaskFileStatus(body: string, done: boolean, todayIso: string)
   })
 }
 
+/** Flip a file-task's cancelled state in its frontmatter: `status: cancelled`
+ *  when cancelling, back to `open` when un-cancelling. Cancelled is a terminal
+ *  state distinct from done, so no `completedDate` is stamped. (#450) */
+export function setTaskFileCancelled(body: string, cancelled: boolean): string {
+  return updateFrontmatterFields(body, {
+    status: cancelled ? 'cancelled' : 'open',
+    completedDate: null
+  })
+}
+
 /** ZenNotes priority -> the value written to a task file's frontmatter, using
  *  TaskNotes' vocabulary (`high` / `normal` / `low`) for interop. `null` clears. */
 export function taskFilePriorityValue(priority: TaskPriority | null | undefined): string | null {

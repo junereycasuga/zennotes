@@ -4,10 +4,11 @@
 // to round-trip a toggle — see `src/shared/tasks.ts`.
 
 export const FENCE_RE = /^(\s*)(```|~~~)/
-// Group 2 is the checkbox state char: space (open), x/X (done), or `>` (forwarded
-// to another note, #316). The leading `(?:>\s*)*` is a blockquote prefix — a
-// different `>`, unrelated to the state char inside the brackets.
-export const TASK_LINE_RE = /^(\s*(?:>\s*)*(?:[-+*]|\d+[.)])\s+\[)( |x|X|>)(\].*)$/
+// Group 2 is the checkbox state char: space (open), x/X (done), `>` (forwarded
+// to another note, #316), or `-` (cancelled — intentionally abandoned, #450).
+// The leading `(?:>\s*)*` is a blockquote prefix — a different `>`, unrelated to
+// the state char inside the brackets.
+export const TASK_LINE_RE = /^(\s*(?:>\s*)*(?:[-+*]|\d+[.)])\s+\[)( |x|X|>|-)(\].*)$/
 
 export type TaskPriority = 'high' | 'med' | 'low'
 
@@ -295,6 +296,19 @@ export function setTaskForwardedAtIndex(
     const tail = tailWithBracket.slice(1).replace(/\s+$/u, '')
     const nextTail = !linkToken || tail.includes(linkToken) ? tail : `${tail} ${linkToken}`
     return `${prefix}>]${nextTail}`
+  })
+}
+
+/** Mark the task line at `taskIndex` as cancelled (`[-]`) when `cancelled`, or
+ *  flip it back to open (`[ ]`) when not. Cancelled = intentionally abandoned,
+ *  distinct from done or forwarded (#450). */
+export function setTaskCancelledAtIndex(
+  markdown: string,
+  taskIndex: number,
+  cancelled: boolean
+): string {
+  return editTaskAtIndex(markdown, taskIndex, (match) => {
+    return `${match[1]}${cancelled ? '-' : ' '}${match[3]}`
   })
 }
 

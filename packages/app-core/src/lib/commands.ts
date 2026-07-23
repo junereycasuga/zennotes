@@ -813,6 +813,26 @@ export function buildCommands(options?: { includeUnavailable?: boolean }): Comma
       }
     },
     {
+      id: 'task.cancel',
+      title: 'Cancel Task',
+      category: 'Editor',
+      keywords: 'cancel task abandon drop dropped scrap wontfix strike',
+      when: () => {
+        const view = getState().editorViewRef
+        return !!view && !!getState().activeNote && !!taskAtEditorCursor(view)
+      },
+      run: async () => {
+        const view = getState().editorViewRef
+        if (!view) return
+        const task = taskAtEditorCursor(view)
+        if (!task) {
+          window.alert('Put the cursor on a task line to cancel it.')
+          return
+        }
+        await getState().cancelTaskFromList(task)
+      }
+    },
+    {
       id: 'nav.back',
       title: 'Go Back',
       category: 'Tabs',

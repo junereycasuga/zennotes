@@ -42,6 +42,10 @@ export interface VaultTask {
   /** True for a `[>]` task forwarded to another note (#316). Mutually
    *  exclusive with `checked`; kept out of the today/upcoming/done buckets. */
   forwarded: boolean
+  /** True for a `[-]` task cancelled — intentionally abandoned (#450). Mutually
+   *  exclusive with `checked`/`forwarded`; kept out of the active buckets and
+   *  collected under its own group. */
+  cancelled: boolean
   /** ISO YYYY-MM-DD, validated via Date round-trip. */
   due?: string
   /** True when `due` was *derived* from the containing daily note's date
@@ -78,6 +82,7 @@ export interface VaultTaskGroups {
   waiting: VaultTask[]
   done: VaultTask[]
   forwarded: VaultTask[]
+  cancelled: VaultTask[]
   overdueCount: number
 }
 
@@ -286,6 +291,7 @@ export function parseTasksFromBody(body: string, ctx: ParseTasksContext): VaultT
     const tail = taskMatch[3].replace(/^\]/, '') // drop the closing `]` of the checkbox
     const checked = checkedChar === 'x' || checkedChar === 'X'
     const forwarded = checkedChar === '>'
+    const cancelled = checkedChar === '-'
 
     const tokens = extractTokens(tail)
 
@@ -300,6 +306,7 @@ export function parseTasksFromBody(body: string, ctx: ParseTasksContext): VaultT
       content: tokens.stripped || tail.trim(),
       checked,
       forwarded,
+      cancelled,
       due: tokens.due ?? defaults.due,
       priority: tokens.priority ?? defaults.priority,
       waiting: tokens.waiting,
@@ -329,6 +336,10 @@ export const TASK_FILE_TAG = 'task'
 
 /** Frontmatter `status:` values treated as complete (checked). */
 const DONE_STATUSES = new Set(['done', 'complete', 'completed', 'x'])
+
+/** Frontmatter `status:` values treated as cancelled — intentionally abandoned
+ *  (#450). Kept out of the active/done buckets, collected under Cancelled. */
+export const CANCELLED_STATUSES = new Set(['cancelled', 'canceled'])
 
 /** Parse a leading frontmatter block into flat fields, handling scalars, inline
  *  arrays (`tags: [a, b]`) and block lists (`tags:` then `  - a`). Keys are
@@ -412,6 +423,7 @@ export function parseTaskFile(body: string, ctx: ParseTasksContext): VaultTask |
     content: title,
     checked: DONE_STATUSES.has(status),
     forwarded: false,
+    cancelled: CANCELLED_STATUSES.has(status),
     due: normalizeDueDate(firstScalar(fm.due)),
     priority: normalizePriority(firstScalar(fm.priority)),
     waiting: status === 'waiting',
@@ -445,9 +457,14 @@ export function groupTasks(tasks: VaultTask[], today: Date): VaultTaskGroups {
   const waiting: VaultTask[] = []
   const done: VaultTask[] = []
   const forwarded: VaultTask[] = []
+  const cancelled: VaultTask[] = []
   let overdueCount = 0
 
   for (const task of tasks) {
+    if (task.cancelled) {
+      cancelled.push(task)
+      continue
+    }
     if (task.forwarded) {
       forwarded.push(task)
       continue
@@ -500,8 +517,12 @@ export function groupTasks(tasks: VaultTask[], today: Date): VaultTaskGroups {
     return a.taskIndex - b.taskIndex
   })
   forwarded.sort(byDueThenPath)
+  cancelled.sort((a, b) => {
+    if (a.sourcePath !== b.sourcePath) return a.sourcePath < b.sourcePath ? -1 : 1
+    return a.taskIndex - b.taskIndex
+  })
 
-  return { today: today_, upcoming, waiting, done, forwarded, overdueCount }
+  return { today: today_, upcoming, waiting, done, forwarded, cancelled, overdueCount }
 }
 
 /** Helper for UIs that need to know whether a task is overdue relative to now. */
