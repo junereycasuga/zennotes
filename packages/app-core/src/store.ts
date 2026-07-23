@@ -56,6 +56,7 @@ import {
   FENCE_RE,
   TASK_LINE_RE,
   extractUncheckedTaskBlocks,
+  insertTasksUnderTasksHeading,
   moveTaskLine,
   removeTaskAtIndex,
   takeTaskLineAtIndex,
@@ -4759,10 +4760,10 @@ export const useStore = create<Store>((set, get) => {
     const nextSrc = setTaskForwardedAtIndex(srcBody, task.taskIndex, forwardLink)
     if (nextSrc === srcBody) return
 
-    // Copy: a fresh open task in the target, backlinked to the origin.
+    // Copy: a fresh open task in the target, backlinked to the origin. Slot it
+    // under the target's `## Tasks` heading when it has one, else append (#452).
     const copyLine = `- [ ] ${task.content} ${backLink}`.replace(/\s+$/u, '')
-    const trimmed = tgtBody.replace(/\s+$/u, '')
-    const nextTgt = trimmed.length ? `${trimmed}\n${copyLine}\n` : `${copyLine}\n`
+    const nextTgt = insertTasksUnderTasksHeading(tgtBody, [copyLine])
 
     if (srcBuffer) get().updateNoteBody(task.sourcePath, nextSrc)
     else {
@@ -6451,9 +6452,9 @@ export const useStore = create<Store>((set, get) => {
       console.error('rollover readNote (today) failed', err)
       return 0
     }
-    const trimmed = todayBody.replace(/\s+$/u, '')
-    const block = movedLines.join('\n')
-    const nextBody = trimmed.length ? `${trimmed}\n${block}\n` : `${block}\n`
+    // Group the rolled-over tasks under today's `## Tasks` heading if it has
+    // one, else append them to the end (#452).
+    const nextBody = insertTasksUnderTasksHeading(todayBody, movedLines)
     if (todayBuffer) {
       get().updateNoteBody(todayNote.path, nextBody)
     } else {
