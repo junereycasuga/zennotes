@@ -8,7 +8,7 @@ import {
   autoPairBackspaceTransaction,
   autoPairExtension,
   autoPairInputTransaction,
-  isInFencedCodeBlock
+  isInMarkdownCode
 } from './cm-auto-pairs'
 import { vimAwareDefaultKeymap, vimAwareMarkdownKeymap } from './cm-vim-default-keymap'
 
@@ -89,16 +89,17 @@ describe('autoPairBackspaceTransaction', () => {
   })
 })
 
-describe('isInFencedCodeBlock', () => {
-  it('identifies code content but not Markdown prose', () => {
-    const doc = 'Prose\n\n```ts\nconst value = \n```'
+describe('isInMarkdownCode', () => {
+  it('identifies fenced and inline code but not Markdown prose', () => {
+    const doc = 'Prose\n\n```ts\nconst fenced = \n```\n\nInline `const inline = `'
     const current = EditorState.create({
       doc,
       extensions: [markdown({ base: markdownLanguage, addKeymap: false })]
     })
 
-    expect(isInFencedCodeBlock(current, 2)).toBe(false)
-    expect(isInFencedCodeBlock(current, doc.indexOf('const') + 'const value = '.length)).toBe(true)
+    expect(isInMarkdownCode(current, 2)).toBe(false)
+    expect(isInMarkdownCode(current, doc.indexOf('const fenced') + 'const fenced = '.length)).toBe(true)
+    expect(isInMarkdownCode(current, doc.indexOf('const inline') + 'const inline = '.length)).toBe(true)
   })
 })
 

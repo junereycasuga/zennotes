@@ -1842,7 +1842,7 @@ export function SettingsModal(): JSX.Element {
           id: "auto-pairs",
           title: "Auto-pair brackets and delimiters",
           description:
-            "Insert matching [] () and {} as you type; quotes pair in fenced code blocks.",
+            "Insert matching [] () and {} as you type; quotes pair in Markdown code.",
           keywords: [
             "auto pair",
             "autopair",
@@ -1859,7 +1859,7 @@ export function SettingsModal(): JSX.Element {
           id: "auto-pair-quotes-in-prose",
           title: "Auto-pair quotes in prose",
           description:
-            "Also insert matching quotes outside fenced code blocks.",
+            "Also insert matching quotes outside Markdown code.",
           keywords: ["auto pair", "autopair", "quotes", "prose", "code blocks"],
         },
         {
@@ -2199,7 +2199,7 @@ export function SettingsModal(): JSX.Element {
                 />
                 <ToggleRow
                   label="Auto-pair brackets and delimiters"
-                  description="Insert matching [] () and {} as you type, wrap selected text, and skip over a closing delimiter that is already present. Quotes pair inside fenced code blocks. In Vim mode this only applies in insert mode."
+                  description="Insert matching [] () and {} as you type, wrap selected text, and skip over a closing delimiter that is already present. Quotes pair inside inline code and fenced code blocks. In Vim mode this only applies in insert mode."
                   value={autoPairs}
                   settingId="auto-pairs"
                   onChange={setAutoPairs}
@@ -2207,7 +2207,7 @@ export function SettingsModal(): JSX.Element {
                 {autoPairs && (
                   <ToggleRow
                     label="Auto-pair quotes in prose"
-                    description={'Also insert matching "" and \'\' outside fenced code blocks.'}
+                    description={'Also insert matching "" and \'\' outside inline code and fenced code blocks.'}
                     value={autoPairQuotesInProse}
                     settingId="auto-pair-quotes-in-prose"
                     onChange={setAutoPairQuotesInProse}

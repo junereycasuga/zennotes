@@ -21,11 +21,11 @@ export interface AutoPairExtensionConfig {
   shouldPairQuotes?: (view: EditorView, from: number, to: number) => boolean
 }
 
-/** True when a position is inside a Markdown fenced code block. */
-export function isInFencedCodeBlock(state: EditorState, pos: number): boolean {
+/** True when a position is inside a Markdown code span or fenced code block. */
+export function isInMarkdownCode(state: EditorState, pos: number): boolean {
   let node = syntaxTree(state).resolveInner(pos, -1)
   while (node) {
-    if (node.name === 'FencedCode') return true
+    if (node.name === 'FencedCode' || node.name === 'InlineCode') return true
     if (!node.parent) break
     node = node.parent
   }
@@ -94,7 +94,7 @@ export function autoPairBackspaceTransaction(
 /**
  * Standard paired-delimiter editing, optionally restricted by the caller
  * (ZenNotes uses that to allow it only outside Vim normal/visual modes, and
- * keeps quote pairing inside fenced code unless the user opts into prose).
+ * keeps quote pairing inside Markdown code unless the user opts into prose).
  */
 export function autoPairExtension(config: AutoPairExtensionConfig = {}): Extension {
   const shouldHandle = (view: EditorView): boolean => !config.shouldHandle || config.shouldHandle(view)

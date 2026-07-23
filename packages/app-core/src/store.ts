@@ -413,7 +413,7 @@ interface Prefs {
   markdownSnippets: boolean
   /** Auto-insert matching `[]`, `()`, and `{}` delimiters while typing. */
   autoPairs: boolean
-  /** Also auto-insert matching quotes outside fenced code blocks. */
+  /** Also auto-insert matching quotes outside Markdown code spans and blocks. */
   autoPairQuotesInProse: boolean
   hideBuiltinTemplates: boolean // hide shipped built-in templates from the pickers
   tabsEnabled: boolean
@@ -2237,7 +2237,7 @@ interface Store {
   markdownSnippets: boolean
   /** Auto-insert matching `[]`, `()`, and `{}` delimiters while typing. Persisted. */
   autoPairs: boolean
-  /** Also auto-insert matching quotes outside fenced code blocks. Persisted. */
+  /** Also auto-insert matching quotes outside Markdown code spans and blocks. Persisted. */
   autoPairQuotesInProse: boolean
   hideBuiltinTemplates: boolean
   tabsEnabled: boolean

@@ -143,7 +143,7 @@ describe('TOML serialization', () => {
     expect(text).toContain('font_size = 16')
     expect(text).toContain('auto_pairs = true  # auto-insert matching [] () and {} while typing')
     expect(text).toContain(
-      'auto_pair_quotes_in_prose = false  # also auto-insert matching quotes outside fenced code blocks'
+      'auto_pair_quotes_in_prose = false  # also auto-insert matching quotes outside Markdown code'
     )
     expect(text).toContain('[vim]')
     expect(text).toContain('[view]')

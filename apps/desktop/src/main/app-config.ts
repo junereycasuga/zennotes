@@ -110,7 +110,7 @@ const SCALAR_FIELDS: Partial<Record<PortablePrefKey, ScalarFieldMap>> = {
   autoPairQuotesInProse: {
     section: 'editor',
     tomlKey: 'auto_pair_quotes_in_prose',
-    comment: 'also auto-insert matching quotes outside fenced code blocks'
+    comment: 'also auto-insert matching quotes outside Markdown code'
   },
   hideBuiltinTemplates: {
     section: 'editor',

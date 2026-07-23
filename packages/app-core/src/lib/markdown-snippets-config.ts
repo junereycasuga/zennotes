@@ -1,6 +1,6 @@
 import type { Extension } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
-import { autoPairExtension, isInFencedCodeBlock } from './cm-auto-pairs'
+import { autoPairExtension, isInMarkdownCode } from './cm-auto-pairs'
 import { markdownSnippetExtension } from './cm-markdown-snippets'
 import { isEditorInsertMode } from './vim-nav'
 import { useStore } from '../store'
@@ -23,7 +23,7 @@ export function appMarkdownSnippetExtension(): Extension {
       shouldHandle: (view) => useStore.getState().autoPairs && isTyping(view),
       shouldPairQuotes: (view, from) => {
         const s = useStore.getState()
-        return s.autoPairQuotesInProse || isInFencedCodeBlock(view.state, from)
+        return s.autoPairQuotesInProse || isInMarkdownCode(view.state, from)
       }
     }),
     markdownSnippetExtension({
